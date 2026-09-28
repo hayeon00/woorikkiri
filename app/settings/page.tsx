@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -11,7 +12,7 @@ import {
     deleteGroup,
 } from "../actions";
 
-export default async function SettingsPage() {
+async function SettingsContent() {
     const supabase = await createClient();
 
     // ========================================
@@ -625,5 +626,25 @@ export default async function SettingsPage() {
             </nav>
 
         </main>
+    );
+}
+
+export default function SettingsPage() {
+    return (
+        <Suspense
+            fallback={
+                <main className="mx-auto min-h-screen max-w-md border-x bg-white p-6">
+                    <h1 className="text-2xl font-bold">
+                        우리끼리
+                    </h1>
+
+                    <p className="mt-3 text-sm text-gray-400">
+                        내 정보를 불러오는 중...
+                    </p>
+                </main>
+            }
+        >
+            <SettingsContent />
+        </Suspense>
     );
 }

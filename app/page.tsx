@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -8,9 +9,9 @@ import {
     deleteComment,
 } from "./actions";
 
-export default async function Home({
-                                       searchParams,
-                                   }: {
+async function Feed({
+                        searchParams,
+                    }: {
     searchParams: Promise<{
         group?: string;
     }>;
@@ -1223,5 +1224,33 @@ export default async function Home({
             </nav>
 
         </main>
+    );
+}
+
+export default function Home({
+                                 searchParams,
+                             }: {
+    searchParams: Promise<{
+        group?: string;
+    }>;
+}) {
+    return (
+        <Suspense
+            fallback={
+                <main className="mx-auto min-h-screen max-w-md border-x bg-white p-6">
+                    <h1 className="text-2xl font-bold">
+                        우리끼리
+                    </h1>
+
+                    <p className="mt-3 text-sm text-gray-400">
+                        피드를 불러오는 중...
+                    </p>
+                </main>
+            }
+        >
+            <Feed
+                searchParams={searchParams}
+            />
+        </Suspense>
     );
 }
