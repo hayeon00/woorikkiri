@@ -53,54 +53,99 @@ async function Feed({
         );
     }
 
+    // ========================================
     // 내 프로필
+    // ========================================
+
     const { data: myProfile } = await supabase
         .from("profiles")
         .select("nickname, avatar_url")
         .eq("id", user.id)
         .single();
 
+    // ========================================
+    // 읽지 않은 알림 개수
+    // ========================================
+
+    const {
+        count: unreadNotificationCount,
+        error: notificationCountError,
+    } = await supabase
+        .from("notifications")
+        .select("id", {
+            count: "exact",
+            head: true,
+        })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+    if (notificationCountError) {
+        console.error(
+            "알림 개수 조회 실패:",
+            notificationCountError
+        );
+    }
+
+    // ========================================
+    // 내 프로필 사진
+    // ========================================
+
     let myAvatarUrl: string | null = null;
 
     if (myProfile?.avatar_url) {
         const { data } = await supabase.storage
             .from("avatars")
-            .createSignedUrl(myProfile.avatar_url, 60 * 60);
+            .createSignedUrl(
+                myProfile.avatar_url,
+                60 * 60
+            );
 
-        myAvatarUrl = data?.signedUrl ?? null;
+        myAvatarUrl =
+            data?.signedUrl ?? null;
     }
 
+    // ========================================
     // 내가 가입한 그룹
-    const { data: memberships, error: membershipError } =
-        await supabase
-            .from("group_members")
-            .select(`
-                group_id,
-                joined_at,
+    // ========================================
 
-                groups (
-                    id,
-                    name,
-                    invite_code,
-                    owner_id,
-                    created_at
-                )
-            `)
-            .eq("user_id", user.id)
-            .order("joined_at", {
-                ascending: true,
-            });
+    const {
+        data: memberships,
+        error: membershipError,
+    } = await supabase
+        .from("group_members")
+        .select(`
+            group_id,
+            joined_at,
+
+            groups (
+                id,
+                name,
+                invite_code,
+                owner_id,
+                created_at
+            )
+        `)
+        .eq("user_id", user.id)
+        .order("joined_at", {
+            ascending: true,
+        });
 
     if (membershipError) {
-        console.error("그룹 조회 실패:", membershipError);
+        console.error(
+            "그룹 조회 실패:",
+            membershipError
+        );
     }
 
-    const requestedGroupId = Number(params.group);
+    const requestedGroupId =
+        Number(params.group);
 
-    const requestedMembership = memberships?.find(
-        (membership: any) =>
-            membership.group_id === requestedGroupId
-    );
+    const requestedMembership =
+        memberships?.find(
+            (membership: any) =>
+                membership.group_id ===
+                requestedGroupId
+        );
 
     const currentMembership =
         requestedMembership ??
@@ -110,11 +155,17 @@ async function Feed({
     const currentGroup: any =
         currentMembership?.groups ?? null;
 
+    // ========================================
     // 현재 그룹 멤버
+    // ========================================
+
     let groupMembers: any[] = [];
 
     if (currentGroup) {
-        const { data, error } = await supabase
+        const {
+            data,
+            error,
+        } = await supabase
             .from("group_members")
             .select(`
                 user_id,
@@ -125,80 +176,108 @@ async function Feed({
                     avatar_url
                 )
             `)
-            .eq("group_id", currentGroup.id)
+            .eq(
+                "group_id",
+                currentGroup.id
+            )
             .order("joined_at", {
                 ascending: true,
             });
 
         if (error) {
-            console.error("그룹 멤버 조회 실패:", error);
+            console.error(
+                "그룹 멤버 조회 실패:",
+                error
+            );
         } else {
-            groupMembers = data ?? [];
+            groupMembers =
+                data ?? [];
         }
     }
 
-    const groupMembersWithAvatars = await Promise.all(
-        groupMembers.map(async (member: any) => {
-            let avatarUrl: string | null = null;
+    const groupMembersWithAvatars =
+        await Promise.all(
+            groupMembers.map(
+                async (member: any) => {
+                    let avatarUrl:
+                        | string
+                        | null = null;
 
-            if (member.profiles?.avatar_url) {
-                const { data } = await supabase.storage
-                    .from("avatars")
-                    .createSignedUrl(
-                        member.profiles.avatar_url,
-                        60 * 60
-                    );
+                    if (
+                        member.profiles
+                            ?.avatar_url
+                    ) {
+                        const { data } =
+                            await supabase.storage
+                                .from(
+                                    "avatars"
+                                )
+                                .createSignedUrl(
+                                    member
+                                        .profiles
+                                        .avatar_url,
+                                    60 * 60
+                                );
 
-                avatarUrl = data?.signedUrl ?? null;
-            }
+                        avatarUrl =
+                            data?.signedUrl ??
+                            null;
+                    }
 
-            return {
-                ...member,
-                avatar_url: avatarUrl,
-            };
-        })
-    );
+                    return {
+                        ...member,
+                        avatar_url:
+                        avatarUrl,
+                    };
+                }
+            )
+        );
 
+    // ========================================
     // 게시글
-    const { data: posts, error: postsError } =
-        await supabase
-            .from("posts")
-            .select(`
+    // ========================================
+
+    const {
+        data: posts,
+        error: postsError,
+    } = await supabase
+        .from("posts")
+        .select(`
+            id,
+            content,
+            image_path,
+            created_at,
+            user_id,
+            group_id,
+
+            profiles!posts_user_id_fkey (
+                nickname,
+                avatar_url
+            ),
+
+            likes (
+                user_id
+            ),
+
+            comments (
                 id,
                 content,
-                image_path,
                 created_at,
                 user_id,
-                group_id,
 
-                profiles!posts_user_id_fkey (
+                profiles!comments_user_id_fkey (
                     nickname,
                     avatar_url
-                ),
-
-                likes (
-                    user_id
-                ),
-
-                comments (
-                    id,
-                    content,
-                    created_at,
-                    user_id,
-
-                    profiles!comments_user_id_fkey (
-                        nickname,
-                        avatar_url
-                    )
                 )
-            `)
-            .eq(
-                "group_id",
-                currentGroup?.id ?? -1
             )
-            .order("created_at", {
-                ascending: false,
-            });
+        `)
+        .eq(
+            "group_id",
+            currentGroup?.id ?? -1
+        )
+        .order("created_at", {
+            ascending: false,
+        });
 
     if (postsError) {
         console.error(
@@ -214,7 +293,8 @@ async function Feed({
 
                 <div className="mt-8 rounded-3xl bg-red-50 p-5">
                     <p className="font-bold">
-                        게시글을 불러오지 못했어요.
+                        게시글을 불러오지
+                        못했어요.
                     </p>
 
                     <p className="mt-2 break-words text-sm text-red-500">
@@ -225,89 +305,137 @@ async function Feed({
         );
     }
 
-    const postsWithImages = await Promise.all(
-        (posts ?? []).map(async (post: any) => {
-            let imageUrl: string | null = null;
+    // ========================================
+    // 게시글 / 프로필 사진 Signed URL
+    // ========================================
 
-            if (post.image_path) {
-                const { data } = await supabase.storage
-                    .from("post-images")
-                    .createSignedUrl(
-                        post.image_path,
-                        60 * 60
-                    );
+    const postsWithImages =
+        await Promise.all(
+            (posts ?? []).map(
+                async (post: any) => {
+                    let imageUrl:
+                        | string
+                        | null = null;
 
-                imageUrl = data?.signedUrl ?? null;
-            }
+                    if (
+                        post.image_path
+                    ) {
+                        const { data } =
+                            await supabase.storage
+                                .from(
+                                    "post-images"
+                                )
+                                .createSignedUrl(
+                                    post.image_path,
+                                    60 * 60
+                                );
 
-            let authorAvatarUrl: string | null = null;
+                        imageUrl =
+                            data?.signedUrl ??
+                            null;
+                    }
 
-            if (post.profiles?.avatar_url) {
-                const { data } = await supabase.storage
-                    .from("avatars")
-                    .createSignedUrl(
-                        post.profiles.avatar_url,
-                        60 * 60
-                    );
+                    let authorAvatarUrl:
+                        | string
+                        | null = null;
 
-                authorAvatarUrl =
-                    data?.signedUrl ?? null;
-            }
+                    if (
+                        post.profiles
+                            ?.avatar_url
+                    ) {
+                        const { data } =
+                            await supabase.storage
+                                .from(
+                                    "avatars"
+                                )
+                                .createSignedUrl(
+                                    post
+                                        .profiles
+                                        .avatar_url,
+                                    60 * 60
+                                );
 
-            const commentsWithAvatars =
-                await Promise.all(
-                    (post.comments ?? []).map(
-                        async (comment: any) => {
-                            let commentAvatarUrl:
-                                | string
-                                | null = null;
+                        authorAvatarUrl =
+                            data?.signedUrl ??
+                            null;
+                    }
 
-                            if (
-                                comment.profiles
-                                    ?.avatar_url
-                            ) {
-                                const { data } =
-                                    await supabase.storage
-                                        .from("avatars")
-                                        .createSignedUrl(
-                                            comment.profiles
-                                                .avatar_url,
-                                            60 * 60
-                                        );
+                    const commentsWithAvatars =
+                        await Promise.all(
+                            (
+                                post.comments ??
+                                []
+                            ).map(
+                                async (
+                                    comment: any
+                                ) => {
+                                    let commentAvatarUrl:
+                                        | string
+                                        | null =
+                                        null;
 
-                                commentAvatarUrl =
-                                    data?.signedUrl ??
-                                    null;
-                            }
+                                    if (
+                                        comment
+                                            .profiles
+                                            ?.avatar_url
+                                    ) {
+                                        const {
+                                            data,
+                                        } =
+                                            await supabase.storage
+                                                .from(
+                                                    "avatars"
+                                                )
+                                                .createSignedUrl(
+                                                    comment
+                                                        .profiles
+                                                        .avatar_url,
+                                                    60 *
+                                                    60
+                                                );
 
-                            return {
-                                ...comment,
-                                avatar_url:
-                                commentAvatarUrl,
-                            };
-                        }
-                    )
-                );
+                                        commentAvatarUrl =
+                                            data?.signedUrl ??
+                                            null;
+                                    }
 
-            const likedByMe =
-                post.likes?.some(
-                    (like: any) =>
-                        like.user_id === user.id
-                ) ?? false;
+                                    return {
+                                        ...comment,
+                                        avatar_url:
+                                        commentAvatarUrl,
+                                    };
+                                }
+                            )
+                        );
 
-            return {
-                ...post,
-                image_url: imageUrl,
-                author_avatar_url:
-                authorAvatarUrl,
-                comments:
-                commentsWithAvatars,
-                like_count:
-                    post.likes?.length ?? 0,
-                liked_by_me: likedByMe,
-            };
-        })
-    );
+                    const likedByMe =
+                        post.likes?.some(
+                            (like: any) =>
+                                like.user_id ===
+                                user.id
+                        ) ?? false;
+
+                    return {
+                        ...post,
+                        image_url:
+                        imageUrl,
+                        author_avatar_url:
+                        authorAvatarUrl,
+                        comments:
+                        commentsWithAvatars,
+                        like_count:
+                            post.likes
+                                ?.length ?? 0,
+                        liked_by_me:
+                        likedByMe,
+                    };
+                }
+            )
+        );
+
+    // ========================================
+    // 화면
+    // ========================================
 
     return (
         <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] pb-28 text-gray-950">
@@ -334,7 +462,9 @@ async function Feed({
                     >
                         {myAvatarUrl ? (
                             <img
-                                src={myAvatarUrl}
+                                src={
+                                    myAvatarUrl
+                                }
                                 alt="내 프로필"
                                 className="h-10 w-10 rounded-full border border-gray-100 object-cover sm:h-11 sm:w-11"
                             />
@@ -362,9 +492,11 @@ async function Feed({
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-gray-400">
-                        친구들과 우리만의 공간을 만들거나
+                        친구들과 우리만의
+                        공간을 만들거나
                         <br />
-                        받은 초대코드로 참여해보세요.
+                        받은 초대코드로
+                        참여해보세요.
                     </p>
 
                     <a
@@ -380,7 +512,8 @@ async function Feed({
                 <>
                     {/* 그룹 선택 */}
                     {memberships &&
-                        memberships.length > 1 && (
+                        memberships.length >
+                        1 && (
                             <section className="border-b border-gray-100 bg-white py-3">
                                 <div
                                     className="flex gap-2 overflow-x-auto px-4 sm:px-7"
@@ -396,7 +529,9 @@ async function Feed({
                                             const group =
                                                 membership.groups;
 
-                                            if (!group) {
+                                            if (
+                                                !group
+                                            ) {
                                                 return null;
                                             }
 
@@ -440,11 +575,14 @@ async function Feed({
                                     </div>
 
                                     <h2 className="truncate text-[22px] font-black tracking-tight sm:text-[26px]">
-                                        {currentGroup.name}
+                                        {
+                                            currentGroup.name
+                                        }
                                     </h2>
 
                                     <p className="mt-1 text-xs text-gray-400 sm:text-sm">
-                                        우리끼리 편하게 이야기해요.
+                                        우리끼리 편하게
+                                        이야기해요.
                                     </p>
                                 </div>
 
@@ -454,7 +592,6 @@ async function Feed({
                                 >
                                     관리
                                 </a>
-
                             </div>
 
                             <div className="mt-7 flex items-end justify-between gap-4">
@@ -462,7 +599,10 @@ async function Feed({
                                 <div>
                                     <div className="flex items-center">
                                         {groupMembersWithAvatars
-                                            .slice(0, 5)
+                                            .slice(
+                                                0,
+                                                5
+                                            )
                                             .map(
                                                 (
                                                     member: any,
@@ -524,13 +664,17 @@ async function Feed({
 
                         {/* 글쓰기 */}
                         <CreatePostForm
-                            groupId={currentGroup.id}
-                            nickname={
-                                myProfile?.nickname ?? "친구"
+                            groupId={
+                                currentGroup.id
                             }
-                            avatarUrl={myAvatarUrl}
+                            nickname={
+                                myProfile?.nickname ??
+                                "친구"
+                            }
+                            avatarUrl={
+                                myAvatarUrl
+                            }
                         />
-
 
                         {/* 피드 제목 */}
                         <div className="flex items-end justify-between px-1 pb-1 pt-5 sm:pt-7">
@@ -545,12 +689,16 @@ async function Feed({
                             </div>
 
                             <p className="text-xs text-gray-400">
-                                {postsWithImages.length}개의 이야기
+                                {
+                                    postsWithImages.length
+                                }
+                                개의 이야기
                             </p>
                         </div>
 
                         {/* 게시물 */}
                         <section className="space-y-4">
+
                             {postsWithImages.length ===
                                 0 && (
                                     <div className="rounded-[26px] bg-white px-5 py-16 text-center">
@@ -559,11 +707,13 @@ async function Feed({
                                         </div>
 
                                         <p className="mt-4 font-bold">
-                                            아직 이야기가 없어요
+                                            아직 이야기가
+                                            없어요
                                         </p>
 
                                         <p className="mt-2 text-sm text-gray-400">
-                                            첫 번째 이야기를 남겨보세요.
+                                            첫 번째 이야기를
+                                            남겨보세요.
                                         </p>
                                     </div>
                                 )}
@@ -571,12 +721,16 @@ async function Feed({
                             {postsWithImages.map(
                                 (post: any) => (
                                     <article
-                                        key={post.id}
+                                        key={
+                                            post.id
+                                        }
                                         className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]"
                                     >
                                         {/* 작성자 */}
                                         <div className="flex items-center justify-between px-5 pb-3 pt-5 sm:px-7 sm:pt-6">
+
                                             <div className="flex min-w-0 items-center gap-3">
+
                                                 {post.author_avatar_url ? (
                                                     <img
                                                         src={
@@ -592,6 +746,7 @@ async function Feed({
                                                 )}
 
                                                 <div className="min-w-0">
+
                                                     <p className="truncate text-[14px] font-black">
                                                         {post
                                                                 .profiles
@@ -607,13 +762,16 @@ async function Feed({
                                                             {
                                                                 month:
                                                                     "long",
-                                                                day: "numeric",
-                                                                hour: "2-digit",
+                                                                day:
+                                                                    "numeric",
+                                                                hour:
+                                                                    "2-digit",
                                                                 minute:
                                                                     "2-digit",
                                                             }
                                                         )}
                                                     </time>
+
                                                 </div>
                                             </div>
 
@@ -622,6 +780,7 @@ async function Feed({
                                                     <form
                                                         action={async () => {
                                                             "use server";
+
                                                             await deletePost(
                                                                 post.id
                                                             );
@@ -640,7 +799,9 @@ async function Feed({
                                         {/* 글 */}
                                         {post.content && (
                                             <p className="whitespace-pre-wrap break-words px-5 pb-5 text-[15px] leading-7 sm:px-7 sm:text-base">
-                                                {post.content}
+                                                {
+                                                    post.content
+                                                }
                                             </p>
                                         )}
 
@@ -659,10 +820,14 @@ async function Feed({
 
                                         {/* 액션 */}
                                         <div className="px-5 pb-5 pt-4 sm:px-7 sm:pb-6">
+
                                             <div className="flex items-center gap-5">
+
+                                                {/* 좋아요 */}
                                                 <form
                                                     action={async () => {
                                                         "use server";
+
                                                         await toggleLike(
                                                             post.id
                                                         );
@@ -693,6 +858,7 @@ async function Feed({
                                                     </button>
                                                 </form>
 
+                                                {/* 댓글 개수 */}
                                                 <div className="flex items-center gap-1.5 text-gray-700">
                                                     <svg
                                                         width="21"
@@ -712,7 +878,8 @@ async function Feed({
                                                     </svg>
 
                                                     <span className="text-xs font-bold">
-                                                        {post.comments
+                                                        {post
+                                                                .comments
                                                                 ?.length ??
                                                             0}
                                                     </span>
@@ -720,9 +887,11 @@ async function Feed({
                                             </div>
 
                                             {/* 댓글 목록 */}
-                                            {post.comments?.length >
+                                            {post.comments
+                                                    ?.length >
                                                 0 && (
                                                     <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+
                                                         {post.comments
                                                             .sort(
                                                                 (
@@ -761,19 +930,20 @@ async function Feed({
                                                                         )}
 
                                                                         <div className="min-w-0 flex-1">
+
                                                                             <div className="rounded-2xl bg-gray-50 px-3.5 py-2.5">
-                                                                                <span className="mr-2 text-xs font-black">
-                                                                                    {comment
-                                                                                            .profiles
-                                                                                            ?.nickname ??
-                                                                                        "친구"}
-                                                                                </span>
+                                                                            <span className="mr-2 text-xs font-black">
+                                                                                {comment
+                                                                                        .profiles
+                                                                                        ?.nickname ??
+                                                                                    "친구"}
+                                                                            </span>
 
                                                                                 <span className="break-words text-[13px] leading-5">
-                                                                                    {
-                                                                                        comment.content
-                                                                                    }
-                                                                                </span>
+                                                                                {
+                                                                                    comment.content
+                                                                                }
+                                                                            </span>
                                                                             </div>
 
                                                                             {comment.user_id ===
@@ -781,6 +951,7 @@ async function Feed({
                                                                                     <form
                                                                                         action={async () => {
                                                                                             "use server";
+
                                                                                             await deleteComment(
                                                                                                 comment.id
                                                                                             );
@@ -811,7 +982,9 @@ async function Feed({
                                                 <input
                                                     type="hidden"
                                                     name="post_id"
-                                                    value={post.id}
+                                                    value={
+                                                        post.id
+                                                    }
                                                 />
 
                                                 {myAvatarUrl ? (
@@ -829,6 +1002,7 @@ async function Feed({
                                                 )}
 
                                                 <div className="flex min-w-0 flex-1 items-center rounded-full bg-gray-50">
+
                                                     <input
                                                         type="text"
                                                         name="content"
@@ -846,6 +1020,7 @@ async function Feed({
                                                     >
                                                         등록
                                                     </button>
+
                                                 </div>
                                             </form>
                                         </div>
@@ -857,8 +1032,12 @@ async function Feed({
                 </>
             )}
 
-            {/* 하단 메뉴 */}
-            <nav className="fixed bottom-0 left-1/2 z-30 flex h-[72px] w-full max-w-[720px] -translate-x-1/2 items-center border-x border-t border-gray-100 bg-white/95 px-8 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+            {/* ========================================
+                하단 메뉴
+            ======================================== */}
+            <nav className="fixed bottom-0 left-1/2 z-30 flex h-[72px] w-full max-w-[720px] -translate-x-1/2 items-center border-x border-t border-gray-100 bg-white/95 px-5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+
+                {/* 피드 */}
                 <a
                     href="/"
                     className="flex flex-1 flex-col items-center justify-center gap-1 text-black"
@@ -872,6 +1051,31 @@ async function Feed({
                     </span>
                 </a>
 
+                {/* 알림 */}
+                <a
+                    href="/notifications"
+                    className="flex flex-1 flex-col items-center justify-center gap-1 text-gray-300"
+                >
+                    <span className="relative text-[21px] leading-none">
+                        ♡
+
+                        {(unreadNotificationCount ??
+                            0) > 0 && (
+                            <span className="absolute -right-3 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white">
+                                {(unreadNotificationCount ??
+                                    0) > 99
+                                    ? "99+"
+                                    : unreadNotificationCount}
+                            </span>
+                        )}
+                    </span>
+
+                    <span className="text-[10px] font-bold">
+                        알림
+                    </span>
+                </a>
+
+                {/* 내 정보 */}
                 <a
                     href="/settings"
                     className="flex flex-1 flex-col items-center justify-center gap-1 text-gray-300"
@@ -902,15 +1106,21 @@ export default function Home({
                 <main className="mx-auto min-h-screen w-full max-w-[720px] bg-[#f7f7f7] px-4 py-8 sm:px-6">
                     <div className="animate-pulse">
                         <div className="h-4 w-16 rounded bg-gray-200" />
+
                         <div className="mt-3 h-7 w-32 rounded bg-gray-200" />
 
                         <div className="mt-8 h-40 rounded-[28px] bg-gray-100" />
+
                         <div className="mt-3 h-40 rounded-[28px] bg-gray-100" />
                     </div>
                 </main>
             }
         >
-            <Feed searchParams={searchParams} />
+            <Feed
+                searchParams={
+                    searchParams
+                }
+            />
         </Suspense>
     );
 }

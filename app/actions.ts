@@ -103,7 +103,6 @@ export async function createPost(formData: FormData) {
 
     revalidatePath("/");
 }
-
 export async function toggleLike(postId: number) {
     const supabase = await createClient();
 
@@ -115,7 +114,29 @@ export async function toggleLike(postId: number) {
         throw new Error("로그인이 필요합니다.");
     }
 
-    // 내가 이미 이 글에 좋아요를 눌렀는지 확인
+    if (!Number.isInteger(postId) || postId <= 0) {
+        throw new Error("잘못된 게시글입니다.");
+    }
+
+    // 게시글 작성자 확인
+    const {
+        data: post,
+        error: postError,
+    } = await supabase
+        .from("posts")
+        .select("id, user_id")
+        .eq("id", postId)
+        .maybeSingle();
+
+    if (postError) {
+        throw new Error(postError.message);
+    }
+
+    if (!post) {
+        throw new Error("게시글을 찾을 수 없습니다.");
+    }
+
+    // 내가 이미 좋아요를 눌렀는지 확인
     const { data: existingLike } = await supabase
         .from("likes")
         .select("post_id")
@@ -124,8 +145,7 @@ export async function toggleLike(postId: number) {
         .maybeSingle();
 
     if (existingLike) {
-
-        // 이미 눌렀다면 → 좋아요 취소
+        // 좋아요 취소
         const { error } = await supabase
             .from("likes")
             .delete()
@@ -136,9 +156,25 @@ export async function toggleLike(postId: number) {
             throw new Error(error.message);
         }
 
-    } else {
+        // 좋아요를 취소하면 해당 알림도 제거
+        if (post.user_id !== user.id) {
+            const { error: notificationError } = await supabase
+                .from("notifications")
+                .delete()
+                .eq("user_id", post.user_id)
+                .eq("actor_id", user.id)
+                .eq("post_id", postId)
+                .eq("type", "like");
 
-        // 아직 안 눌렀다면 → 좋아요 추가
+            if (notificationError) {
+                console.error(
+                    "좋아요 알림 삭제 실패:",
+                    notificationError
+                );
+            }
+        }
+    } else {
+        // 좋아요 추가
         const { error } = await supabase
             .from("likes")
             .insert({
@@ -148,6 +184,25 @@ export async function toggleLike(postId: number) {
 
         if (error) {
             throw new Error(error.message);
+        }
+
+        // 내 게시글이 아닌 경우에만 알림 생성
+        if (post.user_id !== user.id) {
+            const { error: notificationError } = await supabase
+                .from("notifications")
+                .insert({
+                    user_id: post.user_id,
+                    actor_id: user.id,
+                    type: "like",
+                    post_id: postId,
+                });
+
+            if (notificationError) {
+                console.error(
+                    "좋아요 알림 생성 실패:",
+                    notificationError
+                );
+            }
         }
     }
 
@@ -165,7 +220,6 @@ export async function logout() {
 
     revalidatePath("/");
 }
-
 export async function createComment(formData: FormData) {
     const supabase = await createClient();
 
@@ -177,29 +231,85 @@ export async function createComment(formData: FormData) {
         throw new Error("로그인이 필요합니다.");
     }
 
-    const postId = Number(formData.get("post_id"));
+    const postId = Number(
+        formData.get("post_id")
+    );
+
     const content = String(
         formData.get("content") ?? ""
     ).trim();
 
-    if (!Number.isInteger(postId) || postId <= 0) {
-        throw new Error("잘못된 게시글입니다.");
+    if (
+        !Number.isInteger(postId) ||
+        postId <= 0
+    ) {
+        throw new Error(
+            "잘못된 게시글입니다."
+        );
     }
 
     if (!content || content.length > 300) {
         return;
     }
 
-    const { error } = await supabase
+    // 게시글 작성자 확인
+    const {
+        data: post,
+        error: postError,
+    } = await supabase
+        .from("posts")
+        .select("id, user_id")
+        .eq("id", postId)
+        .maybeSingle();
+
+    if (postError) {
+        throw new Error(postError.message);
+    }
+
+    if (!post) {
+        throw new Error(
+            "게시글을 찾을 수 없습니다."
+        );
+    }
+
+    // 댓글을 저장하면서 생성된 댓글 id 가져오기
+    const {
+        data: comment,
+        error,
+    } = await supabase
         .from("comments")
         .insert({
             post_id: postId,
             user_id: user.id,
             content,
-        });
+        })
+        .select("id")
+        .single();
 
     if (error) {
         throw new Error(error.message);
+    }
+
+    // 내 글에 내가 댓글을 단 경우에는 알림을 만들지 않음
+    if (post.user_id !== user.id) {
+        const {
+            error: notificationError,
+        } = await supabase
+            .from("notifications")
+            .insert({
+                user_id: post.user_id,
+                actor_id: user.id,
+                type: "comment",
+                post_id: postId,
+                comment_id: comment.id,
+            });
+
+        if (notificationError) {
+            console.error(
+                "댓글 알림 생성 실패:",
+                notificationError
+            );
+        }
     }
 
     revalidatePath("/");
@@ -874,4 +984,27 @@ export async function joinGroupFromLink(
     revalidatePath("/settings");
 
     return groupId;
+}
+export async function markNotificationsAsRead() {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error("로그인이 필요합니다.");
+    }
+
+    const { error } = await supabase
+        .from("notifications")
+        .update({
+            is_read: true,
+        })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+    if (error) {
+        throw new Error(error.message);
+    }
 }
