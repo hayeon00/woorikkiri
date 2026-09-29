@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { InviteLinkButton } from "@/components/invite-link-button";
 
 import {
     logout,
@@ -305,6 +306,13 @@ async function SettingsContent() {
                                                         }
                                                     </span>
                                                 </p>
+                                                <div className="mt-3">
+                                                    <InviteLinkButton
+                                                        inviteCode={
+                                                            group.invite_code
+                                                        }
+                                                    />
+                                                </div>
                                             </div>
 
                                             <div className="flex shrink-0 items-center gap-3">

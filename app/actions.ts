@@ -867,3 +867,62 @@ export async function deleteGroup(
     revalidatePath("/");
     revalidatePath("/settings");
 }
+
+// ========================================
+// 초대 링크로 그룹 참여
+// ========================================
+
+export async function joinGroupFromLink(
+    formData: FormData
+) {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error(
+            "로그인이 필요합니다."
+        );
+    }
+
+    const inviteCode = String(
+        formData.get("invite_code") ?? ""
+    )
+        .trim()
+        .toUpperCase();
+
+    if (!inviteCode) {
+        throw new Error(
+            "잘못된 초대 링크입니다."
+        );
+    }
+
+    const {
+        data: groupId,
+        error,
+    } = await supabase.rpc(
+        "join_group_by_invite_code",
+        {
+            code: inviteCode,
+        }
+    );
+
+    if (error) {
+        throw new Error(
+            error.message
+        );
+    }
+
+    if (!groupId) {
+        throw new Error(
+            "그룹을 찾을 수 없습니다."
+        );
+    }
+
+    revalidatePath("/");
+    revalidatePath("/settings");
+
+    return groupId;
+}
