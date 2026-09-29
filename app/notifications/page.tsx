@@ -24,23 +24,23 @@ async function NotificationsContent() {
     } = await supabase
         .from("notifications")
         .select(`
-                    id,
-                    type,
-                    post_id,
-                    comment_id,
-                    is_read,
-                    created_at,
-                    actor_id,
-                
-                    profiles!notifications_actor_id_fkey (
-                        nickname,
-                        avatar_url
-                    ),
-                
-                    posts (
-                        group_id
-                    )
-                `)
+            id,
+            type,
+            post_id,
+            comment_id,
+            is_read,
+            created_at,
+            actor_id,
+
+            profiles!notifications_actor_id_fkey (
+                nickname,
+                avatar_url
+            ),
+
+            posts (
+                group_id
+            )
+        `)
         .eq("user_id", user.id)
         .order("created_at", {
             ascending: false,
@@ -54,8 +54,7 @@ async function NotificationsContent() {
     }
 
     // ========================================
-    // 읽지 않은 알림 개수
-    // 페이지에 들어온 시점의 개수를 표시
+    // 페이지 진입 당시 읽지 않은 알림 개수
     // ========================================
 
     const unreadCount =
@@ -65,7 +64,7 @@ async function NotificationsContent() {
         ).length ?? 0;
 
     // ========================================
-    // 알림을 읽음 처리
+    // 알림 읽음 처리
     // ========================================
 
     if (unreadCount > 0) {
@@ -115,7 +114,9 @@ async function NotificationsContent() {
     return (
         <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] pb-28 text-gray-950">
 
-            {/* HEADER */}
+            {/* ========================================
+                HEADER
+            ======================================== */}
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-xl">
                 <div className="flex h-[76px] items-center px-4 sm:px-7">
 
@@ -155,7 +156,9 @@ async function NotificationsContent() {
                 </div>
             </header>
 
-            {/* CONTENT */}
+            {/* ========================================
+                CONTENT
+            ======================================== */}
             <div className="px-3 pt-4 sm:px-6 sm:pt-6">
 
                 {/* 알림 요약 */}
@@ -173,8 +176,7 @@ async function NotificationsContent() {
                             </h2>
 
                             <p className="mt-1 text-sm text-gray-400">
-                                친구들의 반응을
-                                확인해보세요.
+                                친구들의 반응을 확인해보세요.
                             </p>
                         </div>
 
@@ -189,7 +191,9 @@ async function NotificationsContent() {
                     </div>
                 </section>
 
-                {/* 알림 없음 */}
+                {/* ========================================
+                    알림 없음
+                ======================================== */}
                 {notificationsWithAvatars.length ===
                     0 && (
                         <section className="rounded-[26px] bg-white px-5 py-20 text-center shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
@@ -203,17 +207,17 @@ async function NotificationsContent() {
                             </h2>
 
                             <p className="mt-2 text-sm leading-6 text-gray-400">
-                                친구가 게시물에
-                                좋아요를 누르거나
+                                친구가 게시물에 좋아요를 누르거나
                                 <br />
-                                댓글을 남기면
-                                여기에 표시돼요.
+                                댓글을 남기면 여기에 표시돼요.
                             </p>
 
                         </section>
                     )}
 
-                {/* 알림 목록 */}
+                {/* ========================================
+                    알림 목록
+                ======================================== */}
                 {notificationsWithAvatars.length >
                     0 && (
                         <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
@@ -233,15 +237,27 @@ async function NotificationsContent() {
                                         notification.type ===
                                         "like";
 
+                                    const groupId =
+                                        notification.posts
+                                            ?.group_id;
+
+                                    const postUrl =
+                                        groupId
+                                            ? `/?group=${groupId}#post-${notification.post_id}`
+                                            : "/";
+
                                     return (
-                                        <div
+                                        <a
                                             key={
                                                 notification.id
                                             }
+                                            href={
+                                                postUrl
+                                            }
                                             className={
                                                 index === 0
-                                                    ? "flex gap-3.5 px-5 py-5 sm:px-6"
-                                                    : "flex gap-3.5 border-t border-gray-100 px-5 py-5 sm:px-6"
+                                                    ? "group flex gap-3.5 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
+                                                    : "group flex gap-3.5 border-t border-gray-100 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
                                             }
                                         >
                                             {/* 프로필 */}
@@ -304,12 +320,35 @@ async function NotificationsContent() {
 
                                             </div>
 
-                                            {/* 읽지 않았던 알림 표시 */}
-                                            {!notification.is_read && (
-                                                <div className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-red-500" />
-                                            )}
+                                            {/* 오른쪽 영역 */}
+                                            <div className="flex shrink-0 items-center gap-3">
 
-                                        </div>
+                                                {/* 아직 읽지 않았던 알림 */}
+                                                {!notification.is_read && (
+                                                    <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                                                )}
+
+                                                {/* 이동 화살표 */}
+                                                <svg
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    aria-hidden="true"
+                                                    className="text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-500"
+                                                >
+                                                    <path
+                                                        d="M9 18L15 12L9 6"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </svg>
+
+                                            </div>
+                                        </a>
                                     );
                                 }
                             )}
@@ -318,7 +357,9 @@ async function NotificationsContent() {
                     )}
             </div>
 
-            {/* 하단 메뉴 */}
+            {/* ========================================
+                하단 메뉴
+            ======================================== */}
             <nav className="fixed bottom-0 left-1/2 z-30 flex h-[72px] w-full max-w-[720px] -translate-x-1/2 items-center border-x border-t border-gray-100 bg-white/95 px-5 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
 
                 {/* 피드 */}
@@ -373,7 +414,9 @@ export default function NotificationsPage() {
         <Suspense
             fallback={
                 <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] px-4 py-8">
+
                     <div className="animate-pulse">
+
                         <div className="h-4 w-16 rounded bg-gray-200" />
 
                         <div className="mt-3 h-7 w-24 rounded bg-gray-200" />
@@ -383,7 +426,9 @@ export default function NotificationsPage() {
                         <div className="mt-4 h-24 rounded-[26px] bg-gray-100" />
 
                         <div className="mt-3 h-24 rounded-[26px] bg-gray-100" />
+
                     </div>
+
                 </main>
             }
         >

@@ -721,10 +721,11 @@ async function Feed({
                             {postsWithImages.map(
                                 (post: any) => (
                                     <article
+                                        id={`post-${post.id}`}
                                         key={
                                             post.id
                                         }
-                                        className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]"
+                                        className="scroll-mt-24 overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]"
                                     >
                                         {/* 작성자 */}
                                         <div className="flex items-center justify-between px-5 pb-3 pt-5 sm:px-7 sm:pt-6">
