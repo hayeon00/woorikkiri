@@ -2,12 +2,13 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 import {
-    createPost,
     toggleLike,
     createComment,
     deletePost,
     deleteComment,
 } from "./actions";
+
+import { CreatePostForm } from "@/components/create-post-form";
 
 async function Feed({
                         searchParams,
@@ -522,60 +523,14 @@ async function Feed({
                         </section>
 
                         {/* 글쓰기 */}
-                        <form
-                            action={createPost}
-                            className="rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-7"
-                        >
-                            <input
-                                type="hidden"
-                                name="group_id"
-                                value={currentGroup.id}
-                            />
+                        <CreatePostForm
+                            groupId={currentGroup.id}
+                            nickname={
+                                myProfile?.nickname ?? "친구"
+                            }
+                            avatarUrl={myAvatarUrl}
+                        />
 
-                            <div className="flex items-start gap-3 sm:gap-4">
-                                {myAvatarUrl ? (
-                                    <img
-                                        src={myAvatarUrl}
-                                        alt="내 프로필"
-                                        className="h-10 w-10 shrink-0 rounded-full object-cover sm:h-11 sm:w-11"
-                                    />
-                                ) : (
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 sm:h-11 sm:w-11">
-                                        👤
-                                    </div>
-                                )}
-
-                                <textarea
-                                    name="content"
-                                    placeholder={`${myProfile?.nickname ?? "친구"}님, 무슨 일이 있었나요?`}
-                                    maxLength={500}
-                                    className="min-h-[88px] min-w-0 flex-1 resize-none pt-2 text-[15px] leading-6 outline-none placeholder:text-gray-300 sm:text-base"
-                                />
-                            </div>
-
-                            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                                <label className="flex cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-[13px] font-bold text-gray-600 transition hover:bg-gray-50">
-                                    <span className="text-lg">
-                                        ▣
-                                    </span>
-                                    사진
-
-                                    <input
-                                        type="file"
-                                        name="image"
-                                        accept="image/*"
-                                        className="hidden"
-                                    />
-                                </label>
-
-                                <button
-                                    type="submit"
-                                    className="rounded-full bg-black px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-gray-800 active:scale-95"
-                                >
-                                    공유하기
-                                </button>
-                            </div>
-                        </form>
 
                         {/* 피드 제목 */}
                         <div className="flex items-end justify-between px-1 pb-1 pt-5 sm:pt-7">

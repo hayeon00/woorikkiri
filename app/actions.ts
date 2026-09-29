@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-
 export async function createPost(formData: FormData) {
     const supabase = await createClient();
 
@@ -18,17 +17,18 @@ export async function createPost(formData: FormData) {
         formData.get("content") ?? ""
     ).trim();
 
-    const image =
-        formData.get("image") as File | null;
+    const imagePathValue = String(
+        formData.get("image_path") ?? ""
+    ).trim();
+
+    const imagePath =
+        imagePathValue || null;
 
     const groupId = Number(
         formData.get("group_id")
     );
 
-    // ========================================
     // 그룹 ID 검사
-    // ========================================
-
     if (
         !Number.isInteger(groupId) ||
         groupId <= 0
@@ -38,10 +38,7 @@ export async function createPost(formData: FormData) {
         );
     }
 
-    // ========================================
     // 실제로 내가 이 그룹 멤버인지 확인
-    // ========================================
-
     const {
         data: membership,
         error: membershipError,
@@ -64,75 +61,33 @@ export async function createPost(formData: FormData) {
         );
     }
 
-    // ========================================
-    // 게시글 검사
-    // ========================================
-
-    if (
-        !content &&
-        (!image || image.size === 0)
-    ) {
-        return;
+    // 글 또는 사진이 하나는 있어야 함
+    if (!content && !imagePath) {
+        throw new Error(
+            "글이나 사진을 추가해주세요."
+        );
     }
 
     if (content.length > 500) {
-        return;
+        throw new Error(
+            "글은 500자 이하로 입력해주세요."
+        );
     }
 
-    // ========================================
-    // 사진 업로드
-    // ========================================
-
-    let imagePath: string | null = null;
-
-    if (image && image.size > 0) {
-        if (!image.type.startsWith("image/")) {
-            throw new Error(
-                "이미지 파일만 업로드할 수 있습니다."
-            );
-        }
-
-        if (
-            image.size >
-            5 * 1024 * 1024
-        ) {
-            throw new Error(
-                "사진은 5MB 이하만 업로드할 수 있습니다."
-            );
-        }
-
-        const extension =
-            image.name
-                .split(".")
-                .pop() ?? "jpg";
-
-        imagePath =
-            `${user.id}/${crypto.randomUUID()}.${extension}`;
-
-        const { error: uploadError } =
-            await supabase.storage
-                .from("post-images")
-                .upload(
-                    imagePath,
-                    image,
-                    {
-                        contentType:
-                        image.type,
-                        upsert: false,
-                    }
-                );
-
-        if (uploadError) {
-            throw new Error(
-                uploadError.message
-            );
-        }
+    // 다른 사용자의 Storage 경로를
+    // 임의로 저장하지 못하도록 검사
+    if (
+        imagePath &&
+        !imagePath.startsWith(
+            `${user.id}/`
+        )
+    ) {
+        throw new Error(
+            "잘못된 사진 경로입니다."
+        );
     }
 
-    // ========================================
     // 게시글 저장
-    // ========================================
-
     const { error } = await supabase
         .from("posts")
         .insert({
@@ -143,12 +98,6 @@ export async function createPost(formData: FormData) {
         });
 
     if (error) {
-        if (imagePath) {
-            await supabase.storage
-                .from("post-images")
-                .remove([imagePath]);
-        }
-
         throw new Error(error.message);
     }
 
