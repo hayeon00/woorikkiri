@@ -1040,7 +1040,7 @@ async function Feed({
                                                                 post.image_url
                                                             }
                                                             alt="게시글 사진"
-                                                            className="max-h-[560px] w-full rounded-[20px] bg-gray-100 object-cover sm:max-h-[600px]"
+                                                            className="max-h-[480px] w-full rounded-[20px] bg-gray-100 object-cover sm:max-h-[560px] xl:max-h-[600px]"
                                                         />
                                                     </div>
                                                 )}
@@ -1233,7 +1233,7 @@ async function Feed({
                     )}
 
                     {/* 모바일/태블릿 하단 내비게이션 */}
-                    <nav className="fixed bottom-0 left-1/2 z-30 flex h-[72px] w-full max-w-[720px] -translate-x-1/2 items-center border-t border-black/[0.05] bg-white/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:border-x xl:hidden">
+                    <nav className="fixed bottom-0 left-1/2 z-30 flex h-[64px] w-full max-w-[720px] -translate-x-1/2 items-center border-t border-black/[0.05] bg-white/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:border-x xl:hidden">
 
                         <a
                             href="/"
