@@ -749,10 +749,8 @@ async function Feed({
                                                 <div className="min-w-0">
 
                                                     <p className="truncate text-[14px] font-black">
-                                                        {post
-                                                                .profiles
-                                                                ?.nickname ??
-                                                            "친구"}
+                                                        {post.profiles?.nickname ??
+                                                            "탈퇴한 사용자"}
                                                     </p>
 
                                                     <time className="mt-0.5 block text-[11px] text-gray-400">
@@ -934,10 +932,8 @@ async function Feed({
 
                                                                             <div className="rounded-2xl bg-gray-50 px-3.5 py-2.5">
                                                                             <span className="mr-2 text-xs font-black">
-                                                                                {comment
-                                                                                        .profiles
-                                                                                        ?.nickname ??
-                                                                                    "친구"}
+                                                                                {comment.profiles?.nickname ??
+                                                                                    "탈퇴한 사용자"}
                                                                             </span>
 
                                                                                 <span className="break-words text-[13px] leading-5">

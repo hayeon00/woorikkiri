@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 export async function createPost(formData: FormData) {
     const supabase = await createClient();
 
@@ -1007,4 +1009,172 @@ export async function markNotificationsAsRead() {
     if (error) {
         throw new Error(error.message);
     }
+}
+
+// ========================================
+// 계정 탈퇴
+// ========================================
+
+export async function deleteAccount(
+    formData: FormData
+) {
+
+    const confirmText = String(
+        formData.get("confirm_text") ?? ""
+    ).trim();
+
+    if (confirmText !== "계정 탈퇴") {
+        throw new Error(
+            '"계정 탈퇴"를 정확히 입력해주세요.'
+        );
+    }
+
+    const supabase = await createClient();
+
+    // ========================================
+    // 현재 로그인 사용자 확인
+    // ========================================
+
+    const {
+        data: { user },
+        error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+        throw new Error(
+            userError.message
+        );
+    }
+
+    if (!user) {
+        throw new Error(
+            "로그인이 필요합니다."
+        );
+    }
+
+    // ========================================
+    // 방장인 그룹이 있는지 DB에서 확인
+    //
+    // true  = 탈퇴 가능
+    // false = 방장 그룹이 있어서 탈퇴 불가
+    // ========================================
+
+    const {
+        data: canDelete,
+        error: checkError,
+    } = await supabase.rpc(
+        "can_delete_my_account"
+    );
+
+    if (checkError) {
+        throw new Error(
+            checkError.message
+        );
+    }
+
+    if (!canDelete) {
+        throw new Error(
+            "방장으로 관리 중인 그룹이 있습니다. 해당 그룹을 먼저 삭제한 뒤 계정을 탈퇴해주세요."
+        );
+    }
+
+    // ========================================
+    // 현재 프로필 사진 경로 확인
+    // ========================================
+
+    const {
+        data: profile,
+        error: profileError,
+    } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (profileError) {
+        throw new Error(
+            profileError.message
+        );
+    }
+
+    const avatarPath =
+        profile?.avatar_url ?? null;
+
+    // ========================================
+    // 프로필 사진 삭제
+    //
+    // 게시글 사진은 삭제하지 않는다.
+    // 게시글 자체를 기록으로 남기기 때문.
+    // ========================================
+
+    if (avatarPath) {
+        const {
+            error: avatarDeleteError,
+        } = await supabase.storage
+            .from("avatars")
+            .remove([avatarPath]);
+
+        if (avatarDeleteError) {
+            throw new Error(
+                `프로필 사진 삭제에 실패했습니다: ${avatarDeleteError.message}`
+            );
+        }
+    }
+
+    // ========================================
+    // Auth 사용자 삭제
+    //
+    // 반드시 서버 전용 Secret key를 사용하는
+    // Admin Client로 실행한다.
+    // ========================================
+
+    const admin =
+        createAdminClient();
+
+    const {
+        error: deleteUserError,
+    } = await admin.auth.admin.deleteUser(
+        user.id
+    );
+
+    if (deleteUserError) {
+        throw new Error(
+            deleteUserError.message
+        );
+    }
+
+    // auth.users 삭제
+    //      ↓ CASCADE
+    // profiles 삭제
+    //
+    // posts.user_id    → NULL
+    // comments.user_id → NULL
+    //
+    // 좋아요 / 그룹 membership /
+    // 관련 알림 등은 FK 정책에 따라 정리된다.
+
+    // ========================================
+    // 삭제된 사용자의 로그인 세션 정리
+    //
+    // Auth 사용자는 이미 삭제됐기 때문에
+    // signOut 과정에서 오류가 발생하더라도
+    // 계정 삭제 자체는 성공한 상태다.
+    // ========================================
+
+    const { error: signOutError } =
+        await supabase.auth.signOut();
+
+    if (signOutError) {
+        console.error(
+            "계정 삭제 후 세션 정리:",
+            signOutError.message
+        );
+    }
+
+    // ========================================
+    // 로그인 화면으로 이동
+    // ========================================
+
+    redirect("/auth/login");
+
 }
