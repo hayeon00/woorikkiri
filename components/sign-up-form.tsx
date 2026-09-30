@@ -2,21 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import {
-    useRouter,
-    useSearchParams,
-} from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 export function SignUpForm({
@@ -24,28 +11,16 @@ export function SignUpForm({
                                ...props
                            }: React.ComponentPropsWithoutRef<"div">) {
     const [email, setEmail] = useState("");
-    const [password, setPassword] =
-        useState("");
-    const [
-        repeatPassword,
-        setRepeatPassword,
-    ] = useState("");
-    const [error, setError] =
-        useState<string | null>(null);
-    const [isLoading, setIsLoading] =
-        useState(false);
+    const [password, setPassword] = useState("");
+    const [repeatPassword, setRepeatPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // ========================================
-    // 초대 링크에서 넘어온 next 주소
-    // ========================================
+    const nextParam = searchParams.get("next");
 
-    const nextParam =
-        searchParams.get("next");
-
-    // 외부 사이트 이동 방지
     const nextPath =
         nextParam &&
         nextParam.startsWith("/") &&
@@ -53,9 +28,7 @@ export function SignUpForm({
             ? nextParam
             : "/";
 
-    const handleSignUp = async (
-        e: React.FormEvent
-    ) => {
+    const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
 
         const supabase = createClient();
@@ -64,28 +37,17 @@ export function SignUpForm({
         setError(null);
 
         if (password !== repeatPassword) {
-            setError(
-                "비밀번호가 서로 일치하지 않습니다."
-            );
+            setError("비밀번호가 서로 일치하지 않습니다.");
             setIsLoading(false);
             return;
         }
 
         try {
-            // ========================================
-            // 이메일 인증 후 돌아올 주소
-            // ========================================
-
             const callbackUrl =
                 `${window.location.origin}` +
-                `/auth/confirm?next=${encodeURIComponent(
-                    nextPath
-                )}`;
+                `/auth/confirm?next=${encodeURIComponent(nextPath)}`;
 
-            const {
-                data,
-                error,
-            } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -97,19 +59,14 @@ export function SignUpForm({
                 throw error;
             }
 
-            // 이메일 인증이 꺼져 있어서
-            // 가입 즉시 세션이 생기는 경우
             if (data.session) {
                 router.push(nextPath);
                 router.refresh();
                 return;
             }
 
-            // 이메일 인증이 필요한 경우
             router.push(
-                `/auth/sign-up-success?next=${encodeURIComponent(
-                    nextPath
-                )}`
+                `/auth/sign-up-success?next=${encodeURIComponent(nextPath)}`
             );
         } catch (error: unknown) {
             setError(
@@ -122,122 +79,138 @@ export function SignUpForm({
         }
     };
 
-    // 로그인 화면으로 돌아갈 때도
-    // 초대 주소를 유지
     const loginHref =
         nextPath !== "/"
-            ? `/auth/login?next=${encodeURIComponent(
-                nextPath
-            )}`
+            ? `/auth/login?next=${encodeURIComponent(nextPath)}`
             : "/auth/login";
 
     return (
         <div
-            className={cn(
-                "flex flex-col gap-6",
-                className
-            )}
+            className={cn("w-full", className)}
             {...props}
         >
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl">
-                        회원가입
-                    </CardTitle>
+            {/* 브랜드 */}
+            <div className="mb-7 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] shadow-sm">
+                    <img
+                        src="/icon-192.png"
+                        alt="우리끼리"
+                        className="h-full w-full object-cover"
+                    />
+                </div>
 
-                    <CardDescription>
-                        우리끼리에서 사용할 계정을
-                        만들어주세요.
-                    </CardDescription>
-                </CardHeader>
+                <p className="mt-4 text-[12px] font-bold tracking-[0.18em] text-gray-400">
+                    WOORIKKIRI
+                </p>
 
-                <CardContent>
-                    <form onSubmit={handleSignUp}>
-                        <div className="flex flex-col gap-6">
+                <h1 className="mt-2 text-[28px] font-black tracking-[-0.04em] text-gray-950">
+                    우리끼리에 오신 걸 환영해요
+                </h1>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">
-                                    이메일
-                                </Label>
+                <p className="mt-2 text-sm leading-6 text-gray-400">
+                    우리만의 작은 공간을 시작해보세요.
+                </p>
+            </div>
 
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="example@email.com"
-                                    required
-                                    value={email}
-                                    onChange={(e) =>
-                                        setEmail(e.target.value)
-                                    }
-                                />
-                            </div>
+            {/* 회원가입 폼 */}
+            <form onSubmit={handleSignUp}>
+                <div className="space-y-4">
+                    <div>
+                        <label
+                            htmlFor="email"
+                            className="mb-2 block text-sm font-bold text-gray-800"
+                        >
+                            이메일
+                        </label>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="password">
-                                    비밀번호
-                                </Label>
+                        <input
+                            id="email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            placeholder="example@email.com"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white"
+                        />
+                    </div>
 
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) =>
-                                        setPassword(e.target.value)
-                                    }
-                                />
-                            </div>
+                    <div>
+                        <label
+                            htmlFor="password"
+                            className="mb-2 block text-sm font-bold text-gray-800"
+                        >
+                            비밀번호
+                        </label>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="repeat-password">
-                                    비밀번호 확인
-                                </Label>
+                        <input
+                            id="password"
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="비밀번호를 입력해주세요"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white"
+                        />
+                    </div>
 
-                                <Input
-                                    id="repeat-password"
-                                    type="password"
-                                    required
-                                    value={repeatPassword}
-                                    onChange={(e) =>
-                                        setRepeatPassword(
-                                            e.target.value
-                                        )
-                                    }
-                                />
-                            </div>
+                    <div>
+                        <label
+                            htmlFor="repeat-password"
+                            className="mb-2 block text-sm font-bold text-gray-800"
+                        >
+                            비밀번호 확인
+                        </label>
 
-                            {error && (
-                                <p className="text-sm text-red-500">
-                                    {error}
-                                </p>
-                            )}
+                        <input
+                            id="repeat-password"
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="비밀번호를 한 번 더 입력해주세요"
+                            required
+                            value={repeatPassword}
+                            onChange={(e) => setRepeatPassword(e.target.value)}
+                            className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white"
+                        />
+                    </div>
 
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={isLoading}
-                            >
-                                {isLoading
-                                    ? "계정 만드는 중..."
-                                    : "회원가입"}
-                            </Button>
-
+                    {error && (
+                        <div className="rounded-2xl bg-red-50 px-4 py-3">
+                            <p className="text-sm font-medium text-red-500">
+                                {error}
+                            </p>
                         </div>
+                    )}
 
-                        <div className="mt-4 text-center text-sm">
-                            이미 계정이 있으신가요?{" "}
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="mt-1 flex h-14 w-full items-center justify-center rounded-2xl bg-[#171717] text-sm font-bold text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isLoading ? "계정 만드는 중..." : "회원가입"}
+                    </button>
+                </div>
+            </form>
 
-                            <Link
-                                href={loginHref}
-                                className="underline underline-offset-4"
-                            >
-                                로그인
-                            </Link>
-                        </div>
+            <div className="mt-7 text-center">
+        <span className="text-sm text-gray-400">
+          이미 계정이 있으신가요?
+        </span>{" "}
+                <Link
+                    href={loginHref}
+                    className="text-sm font-bold text-gray-900"
+                >
+                    로그인
+                </Link>
+            </div>
 
-                    </form>
-                </CardContent>
-            </Card>
+            <p className="mt-9 text-center text-[11px] leading-5 text-gray-300">
+                친한 사람들과 나누는
+                <br />
+                우리만의 작은 공간
+            </p>
         </div>
     );
 }

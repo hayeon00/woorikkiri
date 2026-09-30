@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { InviteLinkButton } from "@/components/invite-link-button";
 
@@ -21,26 +22,11 @@ async function SettingsContent() {
         data: { user },
     } = await supabase.auth.getUser();
 
+
     if (!user) {
-        return (
-            <main className="mx-auto min-h-screen w-full max-w-[720px] bg-white p-6">
-                <h1 className="text-2xl font-black">
-                    우리끼리
-                </h1>
-
-                <p className="mt-3 text-gray-500">
-                    로그인이 필요합니다.
-                </p>
-
-                <a
-                    href="/auth/login"
-                    className="mt-6 inline-flex rounded-xl bg-black px-5 py-3 text-sm font-bold text-white"
-                >
-                    로그인하기
-                </a>
-            </main>
-        );
+        redirect("/auth/login");
     }
+
 
     // ========================================
     // 프로필

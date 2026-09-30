@@ -4,11 +4,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { joinGroupFromLink } from "../../actions";
 
-
-// ========================================
-// 바깥 페이지
-// ========================================
-
 export default function JoinPage({
                                      params,
                                  }: {
@@ -23,11 +18,6 @@ export default function JoinPage({
     );
 }
 
-
-// ========================================
-// 실제 초대 페이지
-// ========================================
-
 async function JoinContent({
                                params,
                            }: {
@@ -37,10 +27,9 @@ async function JoinContent({
 }) {
     const { code } = await params;
 
-    const inviteCode =
-        decodeURIComponent(code)
-            .trim()
-            .toUpperCase();
+    const inviteCode = decodeURIComponent(code)
+        .trim()
+        .toUpperCase();
 
     const supabase = await createClient();
 
@@ -49,124 +38,128 @@ async function JoinContent({
     } = await supabase.auth.getUser();
 
     return (
-        <main className="mx-auto flex min-h-screen w-full max-w-[720px] items-center justify-center bg-[#f7f7f7] px-4 py-10">
+        <main className="min-h-svh bg-[#f6f6f4]">
+            <div className="mx-auto flex min-h-svh w-full max-w-[480px] items-center px-6 py-10 sm:px-8">
+                <section className="w-full rounded-[32px] bg-white px-6 py-8 shadow-[0_8px_40px_rgba(0,0,0,0.05)] sm:px-8 sm:py-10">
 
-            <section className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-[0_2px_20px_rgba(0,0,0,0.05)] sm:p-8">
-
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-xl font-black text-white">
-                    W
-                </div>
-
-                <div className="mt-6 text-center">
-                    <p className="text-[11px] font-bold tracking-wider text-gray-400">
-                        WOORIKKIRI INVITE
-                    </p>
-
-                    <h1 className="mt-2 text-2xl font-black tracking-tight">
-                        우리끼리 초대
-                    </h1>
-
-                    <p className="mt-3 text-sm leading-6 text-gray-400">
-                        친구가 우리끼리 공간으로
-                        <br />
-                        초대했어요.
-                    </p>
-                </div>
-
-                <div className="mt-7 rounded-2xl bg-gray-50 px-5 py-4 text-center">
-                    <p className="text-[10px] font-bold text-gray-400">
-                        초대코드
-                    </p>
-
-                    <p className="mt-1 font-mono text-lg font-black tracking-[0.2em]">
-                        {inviteCode}
-                    </p>
-                </div>
-
-                {!user ? (
-                    <>
-                        <a
-                            href={`/auth/login?next=${encodeURIComponent(
-                                `/join/${inviteCode}`
-                            )}`}
-                            className="mt-6 flex w-full items-center justify-center rounded-2xl bg-black px-5 py-3.5 text-sm font-bold text-white"
-                        >
-                            로그인하고 참여하기
-                        </a>
-
-                        <p className="mt-3 text-center text-xs leading-5 text-gray-400">
-                            우리끼리 계정으로 로그인한 뒤
-                            <br />
-                            초대에 참여할 수 있어요.
-                        </p>
-                    </>
-                ) : (
-                    <>
-                        <form
-                            action={async (
-                                formData: FormData
-                            ) => {
-                                "use server";
-
-                                const groupId =
-                                    await joinGroupFromLink(
-                                        formData
-                                    );
-
-                                redirect(
-                                    `/?group=${groupId}`
-                                );
-                            }}
-                            className="mt-6"
-                        >
-                            <input
-                                type="hidden"
-                                name="invite_code"
-                                value={inviteCode}
+                    {/* 브랜드 */}
+                    <div className="text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] shadow-sm">
+                            <img
+                                src="/icon-192.png"
+                                alt="우리끼리"
+                                className="h-full w-full object-cover"
                             />
+                        </div>
 
-                            <button
-                                type="submit"
-                                className="w-full rounded-2xl bg-black px-5 py-3.5 text-sm font-bold text-white"
+                        <p className="mt-4 text-[12px] font-bold tracking-[0.18em] text-gray-400">
+                            WOORIKKIRI INVITE
+                        </p>
+
+                        <h1 className="mt-2 text-[28px] font-black tracking-[-0.04em] text-gray-950">
+                            함께할 공간에 초대됐어요
+                        </h1>
+
+                        <p className="mt-2 text-sm leading-6 text-gray-400">
+                            친구가 우리끼리 공간으로 초대했어요.
+                            <br />
+                            로그인하고 함께 시작해보세요.
+                        </p>
+                    </div>
+
+                    {/* 초대 코드 */}
+                    <div className="mt-7 rounded-[22px] bg-[#f7f7f5] px-5 py-5 text-center">
+                        <p className="text-[11px] font-bold tracking-wide text-gray-400">
+                            초대코드
+                        </p>
+
+                        <p className="mt-2 font-mono text-lg font-black tracking-[0.2em] text-gray-900">
+                            {inviteCode}
+                        </p>
+                    </div>
+
+                    {!user ? (
+                        <>
+                            <a
+                                href={`/auth/login?next=${encodeURIComponent(
+                                    `/join/${inviteCode}`
+                                )}`}
+                                className="mt-6 flex h-14 w-full items-center justify-center rounded-2xl bg-[#171717] text-sm font-bold text-white shadow-sm transition hover:bg-black"
                             >
-                                이 공간에 참여하기
-                            </button>
-                        </form>
+                                로그인하고 참여하기
+                            </a>
 
-                        <a
-                            href="/"
-                            className="mt-3 flex w-full items-center justify-center rounded-2xl border border-gray-200 px-5 py-3.5 text-sm font-bold text-gray-500"
-                        >
-                            지금은 참여하지 않기
-                        </a>
-                    </>
-                )}
+                            <p className="mt-4 text-center text-xs leading-5 text-gray-400">
+                                아직 계정이 없다면 로그인 화면에서
+                                <br />
+                                회원가입을 선택할 수 있어요.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <form
+                                action={async (formData: FormData) => {
+                                    "use server";
 
-            </section>
+                                    const groupId =
+                                        await joinGroupFromLink(formData);
 
+                                    redirect(`/?group=${groupId}`);
+                                }}
+                                className="mt-6"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="invite_code"
+                                    value={inviteCode}
+                                />
+
+                                <button
+                                    type="submit"
+                                    className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#171717] text-sm font-bold text-white shadow-sm transition hover:bg-black"
+                                >
+                                    이 공간에 참여하기
+                                </button>
+                            </form>
+
+                            <a
+                                href="/"
+                                className="mt-3 flex h-14 w-full items-center justify-center rounded-2xl border border-gray-200 bg-white text-sm font-bold text-gray-500 transition hover:bg-gray-50"
+                            >
+                                지금은 참여하지 않기
+                            </a>
+                        </>
+                    )}
+
+                    <p className="mt-9 text-center text-[11px] leading-5 text-gray-300">
+                        친한 사람들과 나누는
+                        <br />
+                        우리만의 작은 공간
+                    </p>
+                </section>
+            </div>
         </main>
     );
 }
 
-
-// ========================================
-// 로딩 화면
-// ========================================
-
 function JoinLoading() {
     return (
-        <main className="mx-auto flex min-h-screen w-full max-w-[720px] items-center justify-center bg-[#f7f7f7] px-4">
+        <main className="min-h-svh bg-[#f6f6f4]">
+            <div className="mx-auto flex min-h-svh w-full max-w-[480px] items-center justify-center px-6">
+                <div className="text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] shadow-sm">
+                        <img
+                            src="/icon-192.png"
+                            alt="우리끼리"
+                            className="h-full w-full object-cover"
+                        />
+                    </div>
 
-            <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-xl font-black text-white">
-                    W
+                    <p className="mt-4 text-sm font-bold text-gray-400">
+                        초대 정보를 불러오는 중...
+                    </p>
                 </div>
-
-                <p className="mt-4 text-sm font-bold text-gray-400">
-                    초대 정보를 불러오는 중...
-                </p>
             </div>
-
         </main>
     );
 }

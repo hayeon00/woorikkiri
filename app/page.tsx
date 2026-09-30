@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { GroupSwitcher } from "@/components/group-switcher";
@@ -28,32 +29,7 @@ async function Feed({
     } = await supabase.auth.getUser();
 
     if (!user) {
-        return (
-            <main className="mx-auto flex min-h-screen w-full max-w-[720px] flex-col justify-center bg-white px-6 sm:px-10">
-                <div className="mb-8">
-                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-2xl font-black text-white">
-                        W
-                    </div>
-
-                    <h1 className="text-3xl font-black tracking-tight">
-                        우리끼리
-                    </h1>
-
-                    <p className="mt-2 text-sm leading-6 text-gray-400">
-                        친한 사람들끼리
-                        <br />
-                        일상을 나누는 작은 공간
-                    </p>
-                </div>
-
-                <a
-                    href="/auth/login"
-                    className="flex h-13 items-center justify-center rounded-2xl bg-black text-sm font-bold text-white"
-                >
-                    로그인하기
-                </a>
-            </main>
-        );
+        redirect("/auth/login");
     }
 
     // ========================================

@@ -41,9 +41,7 @@ export async function updateSession(request: NextRequest) {
 
     // 로그인하지 않아도 접근할 수 있는 경로
     const isPublicRoute =
-        request.nextUrl.pathname === "/" ||
         request.nextUrl.pathname.startsWith("/auth") ||
-        request.nextUrl.pathname.startsWith("/login") ||
         request.nextUrl.pathname.startsWith("/join/");
 
     if (!user && !isPublicRoute) {

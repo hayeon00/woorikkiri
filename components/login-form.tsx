@@ -2,16 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -28,12 +18,8 @@ export function LoginForm({
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // 초대 링크 등을 통해 로그인 페이지에 들어온 경우
-    // 로그인 완료 후 원래 페이지로 돌아가기 위한 주소
     const nextParam = searchParams.get("next");
 
-    // 외부 사이트로 보내는 open redirect를 막기 위해
-    // "/"로 시작하지만 "//"로 시작하지 않는 내부 경로만 허용
     const nextPath =
         nextParam &&
         nextParam.startsWith("/") &&
@@ -60,8 +46,6 @@ export function LoginForm({
                 throw error;
             }
 
-            // 일반 로그인 → "/"
-            // 초대 링크 로그인 → "/join/초대코드"
             router.push(nextPath);
             router.refresh();
         } catch (error: unknown) {
@@ -75,7 +59,6 @@ export function LoginForm({
         }
     };
 
-    // 회원가입으로 이동할 때도 next 값을 유지
     const signUpHref =
         nextPath !== "/"
             ? `/auth/sign-up?next=${encodeURIComponent(nextPath)}`
@@ -83,103 +66,119 @@ export function LoginForm({
 
     return (
         <div
-            className={cn(
-                "flex flex-col gap-6",
-                className
-            )}
+            className={cn("w-full", className)}
             {...props}
         >
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl">
-                        로그인
-                    </CardTitle>
+            {/* 브랜드 */}
+            <div className="mb-8 text-center">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center overflow-hidden rounded-[22px] shadow-sm">
+                    <img
+                        src="/icon-192.png"
+                        alt="우리끼리"
+                        className="h-full w-full object-cover"
+                    />
+                </div>
 
-                    <CardDescription>
-                        우리끼리 계정으로 로그인해주세요.
-                    </CardDescription>
-                </CardHeader>
+                <p className="mt-4 text-[12px] font-bold tracking-[0.18em] text-gray-400">
+                    WOORIKKIRI
+                </p>
 
-                <CardContent>
-                    <form onSubmit={handleLogin}>
-                        <div className="flex flex-col gap-6">
+                <h1 className="mt-2 text-[28px] font-black tracking-[-0.04em] text-gray-950">
+                    다시 만나서 반가워요
+                </h1>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">
-                                    이메일
-                                </Label>
+                <p className="mt-2 text-sm leading-6 text-gray-400">
+                    우리끼리 계정으로 로그인해주세요.
+                </p>
+            </div>
 
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="example@email.com"
-                                    required
-                                    value={email}
-                                    onChange={(e) =>
-                                        setEmail(e.target.value)
-                                    }
-                                />
-                            </div>
+            {/* 로그인 폼 */}
+            <form onSubmit={handleLogin}>
+                <div className="space-y-5">
+                    <div>
+                        <label
+                            htmlFor="email"
+                            className="mb-2 block text-sm font-bold text-gray-800"
+                        >
+                            이메일
+                        </label>
 
-                            <div className="grid gap-2">
+                        <input
+                            id="email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            placeholder="example@email.com"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400 focus:bg-white"
+                        />
+                    </div>
 
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">
-                                        비밀번호
-                                    </Label>
-
-                                    <Link
-                                        href="/auth/forgot-password"
-                                        className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                                    >
-                                        비밀번호 찾기
-                                    </Link>
-                                </div>
-
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) =>
-                                        setPassword(e.target.value)
-                                    }
-                                />
-
-                            </div>
-
-                            {error && (
-                                <p className="text-sm text-red-500">
-                                    {error}
-                                </p>
-                            )}
-
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={isLoading}
+                    <div>
+                        <div className="mb-2 flex items-center justify-between">
+                            <label
+                                htmlFor="password"
+                                className="text-sm font-bold text-gray-800"
                             >
-                                {isLoading
-                                    ? "로그인 중..."
-                                    : "로그인"}
-                            </Button>
-
-                        </div>
-
-                        <div className="mt-4 text-center text-sm">
-                            계정이 없으신가요?{" "}
+                                비밀번호
+                            </label>
 
                             <Link
-                                href={signUpHref}
-                                className="underline underline-offset-4"
+                                href="/auth/forgot-password"
+                                className="text-xs font-semibold text-gray-400 transition hover:text-gray-700"
                             >
-                                회원가입
+                                비밀번호 찾기
                             </Link>
                         </div>
 
-                    </form>
-                </CardContent>
-            </Card>
+                        <input
+                            id="password"
+                            type="password"
+                            autoComplete="current-password"
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 text-base text-gray-950 outline-none transition focus:border-gray-400 focus:bg-white"
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="rounded-2xl bg-red-50 px-4 py-3">
+                            <p className="text-sm font-medium text-red-500">
+                                {error}
+                            </p>
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#171717] text-sm font-bold text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {isLoading ? "로그인 중..." : "로그인"}
+                    </button>
+                </div>
+            </form>
+
+            <div className="mt-7 text-center">
+        <span className="text-sm text-gray-400">
+          아직 계정이 없으신가요?
+        </span>{" "}
+                <Link
+                    href={signUpHref}
+                    className="text-sm font-bold text-gray-900"
+                >
+                    회원가입
+                </Link>
+            </div>
+
+            <p className="mt-10 text-center text-[11px] leading-5 text-gray-300">
+                친한 사람들과 나누는
+                <br />
+                우리만의 작은 공간
+            </p>
         </div>
     );
 }
