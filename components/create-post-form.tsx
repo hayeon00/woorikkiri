@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    useEffect,
     useRef,
     useState,
 } from "react";
@@ -19,23 +20,71 @@ export function CreatePostForm({
                                    nickname,
                                    avatarUrl,
                                }: CreatePostFormProps) {
-    const [content, setContent] =
-        useState("");
+    const [content, setContent] = useState("");
+    const [image, setImage] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
-    const [image, setImage] =
-        useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const [imageName, setImageName] =
-        useState("");
+    useEffect(() => {
+        if (!image) {
+            setPreviewUrl(null);
+            return;
+        }
 
-    const [isSubmitting, setIsSubmitting] =
-        useState(false);
+        const objectUrl = URL.createObjectURL(image);
 
-    const [errorMessage, setErrorMessage] =
-        useState("");
+        setPreviewUrl(objectUrl);
 
-    const fileInputRef =
-        useRef<HTMLInputElement>(null);
+        return () => {
+            URL.revokeObjectURL(objectUrl);
+        };
+    }, [image]);
+
+    useEffect(() => {
+        if (!isExpanded) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            textareaRef.current?.focus();
+        }, 100);
+
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [isExpanded]);
+
+    function removeImage() {
+        setImage(null);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    }
+
+    function closeComposer() {
+        if (isSubmitting) {
+            return;
+        }
+
+        setContent("");
+        setImage(null);
+        setErrorMessage("");
+        setIsExpanded(false);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "auto";
+        }
+    }
 
     async function handleSubmit(
         event: React.FormEvent<HTMLFormElement>
@@ -46,8 +95,7 @@ export function CreatePostForm({
             return;
         }
 
-        const trimmedContent =
-            content.trim();
+        const trimmedContent = content.trim();
 
         if (!trimmedContent && !image) {
             setErrorMessage(
@@ -64,19 +112,14 @@ export function CreatePostForm({
         }
 
         if (image) {
-            if (
-                !image.type.startsWith("image/")
-            ) {
+            if (!image.type.startsWith("image/")) {
                 setErrorMessage(
                     "이미지 파일만 업로드할 수 있습니다."
                 );
                 return;
             }
 
-            if (
-                image.size >
-                5 * 1024 * 1024
-            ) {
+            if (image.size > 5 * 1024 * 1024) {
                 setErrorMessage(
                     "사진은 5MB 이하만 업로드할 수 있습니다."
                 );
@@ -87,20 +130,15 @@ export function CreatePostForm({
         setIsSubmitting(true);
         setErrorMessage("");
 
-        const supabase =
-            createClient();
+        const supabase = createClient();
 
-        let uploadedImagePath:
-            | string
-            | null = null;
+        let uploadedImagePath: string | null = null;
 
         try {
-            // 현재 로그인 사용자 확인
             const {
                 data: { user },
                 error: userError,
-            } =
-                await supabase.auth.getUser();
+            } = await supabase.auth.getUser();
 
             if (userError || !user) {
                 throw new Error(
@@ -108,8 +146,6 @@ export function CreatePostForm({
                 );
             }
 
-            // 사진이 있으면 브라우저에서
-            // Supabase Storage로 직접 업로드
             if (image) {
                 const extension =
                     image.name
@@ -121,13 +157,9 @@ export function CreatePostForm({
                 uploadedImagePath =
                     `${user.id}/${crypto.randomUUID()}.${extension}`;
 
-                const {
-                    error: uploadError,
-                } =
+                const { error: uploadError } =
                     await supabase.storage
-                        .from(
-                            "post-images"
-                        )
+                        .from("post-images")
                         .upload(
                             uploadedImagePath,
                             image,
@@ -145,10 +177,7 @@ export function CreatePostForm({
                 }
             }
 
-            // Server Action에는 사진 파일을
-            // 보내지 않고 경로만 전송
-            const formData =
-                new FormData();
+            const formData = new FormData();
 
             formData.set(
                 "group_id",
@@ -171,16 +200,17 @@ export function CreatePostForm({
 
             setContent("");
             setImage(null);
-            setImageName("");
+            setIsExpanded(false);
 
             if (fileInputRef.current) {
-                fileInputRef.current.value =
-                    "";
+                fileInputRef.current.value = "";
+            }
+
+            if (textareaRef.current) {
+                textareaRef.current.style.height =
+                    "auto";
             }
         } catch (error) {
-            // 사진 업로드는 성공했는데
-            // 게시글 저장이 실패한 경우
-            // 고아 파일이 남지 않도록 정리
             if (uploadedImagePath) {
                 await supabase.storage
                     .from("post-images")
@@ -199,94 +229,196 @@ export function CreatePostForm({
         }
     }
 
-    return (
-        <form
-            onSubmit={handleSubmit}
-            className="rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-7"
-        >
-            <div className="flex items-start gap-3 sm:gap-4">
+    if (!isExpanded) {
+        return (
+            <button
+                type="button"
+                onClick={() =>
+                    setIsExpanded(true)
+                }
+                className="flex w-full items-center gap-3 rounded-[22px] border border-black/[0.04] bg-white p-4 text-left shadow-[0_8px_30px_rgba(0,0,0,0.03)] transition hover:border-black/[0.08] hover:shadow-[0_10px_35px_rgba(0,0,0,0.05)] active:scale-[0.995]"
+            >
                 {avatarUrl ? (
                     <img
                         src={avatarUrl}
                         alt="내 프로필"
-                        className="h-10 w-10 shrink-0 rounded-full object-cover sm:h-11 sm:w-11"
+                        className="h-10 w-10 shrink-0 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 sm:h-11 sm:w-11">
-                        👤
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                        <UserIcon />
                     </div>
                 )}
 
-                <textarea
-                    value={content}
-                    onChange={(event) =>
-                        setContent(
-                            event.target.value
-                        )
-                    }
-                    placeholder={`${nickname}님, 무슨 일이 있었나요?`}
-                    maxLength={500}
+                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-gray-400">
+                    {nickname}님, 오늘은 어땠나요?
+                </span>
+
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                    <ImageIcon />
+                </span>
+            </button>
+        );
+    }
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="overflow-hidden rounded-[24px] border border-black/[0.05] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.055)]"
+        >
+            {/* 작성창 상단 */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <button
+                    type="button"
+                    onClick={closeComposer}
                     disabled={isSubmitting}
-                    className="min-h-[88px] min-w-0 flex-1 resize-none pt-2 text-[15px] leading-6 outline-none placeholder:text-gray-300 disabled:opacity-60 sm:text-base"
-                />
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
+                    aria-label="작성 취소"
+                >
+                    <CloseIcon />
+                </button>
+
+                <p className="text-[13px] font-black">
+                    새 이야기
+                </p>
+
+                <div className="h-8 w-8" />
             </div>
 
-            {imageName && (
-                <div className="mt-3 flex items-center justify-between rounded-2xl bg-gray-50 px-4 py-3">
-                    <p className="min-w-0 truncate text-xs font-semibold text-gray-500">
-                        사진: {imageName}
-                    </p>
+            <div className="p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                    {avatarUrl ? (
+                        <img
+                            src={avatarUrl}
+                            alt="내 프로필"
+                            className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                            <UserIcon />
+                        </div>
+                    )}
 
-                    <button
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => {
-                            setImage(null);
-                            setImageName("");
+                    <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[12px] font-black">
+                            {nickname}
+                        </p>
 
-                            if (
-                                fileInputRef.current
-                            ) {
-                                fileInputRef.current.value =
-                                    "";
-                            }
-                        }}
-                        className="ml-3 shrink-0 text-xs font-bold text-gray-400"
-                    >
-                        취소
-                    </button>
+                        <textarea
+                            ref={textareaRef}
+                            value={content}
+                            onChange={(
+                                event
+                            ) => {
+                                setContent(
+                                    event.target
+                                        .value
+                                );
+
+                                event.target.style.height =
+                                    "auto";
+
+                                event.target.style.height =
+                                    `${Math.min(
+                                        event.target
+                                            .scrollHeight,
+                                        220
+                                    )}px`;
+
+                                if (
+                                    errorMessage
+                                ) {
+                                    setErrorMessage(
+                                        ""
+                                    );
+                                }
+                            }}
+                            placeholder="우리에게 무슨 일이 있었나요?"
+                            maxLength={500}
+                            rows={3}
+                            disabled={isSubmitting}
+                            className="max-h-[220px] min-h-[92px] w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none placeholder:text-gray-300 disabled:opacity-60"
+                        />
+
+                        {content.length >
+                            420 && (
+                                <div className="mt-1 text-right text-[10px] font-medium text-gray-300">
+                                    {
+                                        content.length
+                                    }
+                                    /500
+                                </div>
+                            )}
+                    </div>
                 </div>
-            )}
 
-            {errorMessage && (
-                <p className="mt-3 text-xs font-semibold text-red-500">
-                    {errorMessage}
-                </p>
-            )}
+                {/* 사진 미리보기 */}
+                {previewUrl && (
+                    <div className="relative mt-4 overflow-hidden rounded-[20px] bg-gray-100">
+                        <img
+                            src={previewUrl}
+                            alt="선택한 사진 미리보기"
+                            className="max-h-[440px] w-full object-cover"
+                        />
 
-            <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                <label className="flex cursor-pointer items-center gap-2 rounded-full px-2 py-2 text-[13px] font-bold text-gray-600 transition hover:bg-gray-50">
-                    <span className="text-lg">
-                        ▣
+                        <button
+                            type="button"
+                            onClick={
+                                removeImage
+                            }
+                            disabled={
+                                isSubmitting
+                            }
+                            aria-label="사진 제거"
+                            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 disabled:opacity-50"
+                        >
+                            <CloseIcon />
+                        </button>
+                    </div>
+                )}
+
+                {errorMessage && (
+                    <div className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-500">
+                        {errorMessage}
+                    </div>
+                )}
+            </div>
+
+            {/* 작성창 하단 */}
+            <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2.5 sm:px-4">
+
+                <label
+                    className={
+                        isSubmitting
+                            ? "flex cursor-not-allowed items-center gap-2 rounded-full px-3 py-2 text-[13px] font-bold text-gray-300"
+                            : "flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-[13px] font-bold text-gray-600 transition hover:bg-gray-50 active:scale-95"
+                    }
+                >
+                    <ImageIcon />
+
+                    <span>
+                        {image
+                            ? "사진 변경"
+                            : "사진 추가"}
                     </span>
-
-                    사진
 
                     <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
-                        disabled={isSubmitting}
+                        disabled={
+                            isSubmitting
+                        }
                         className="hidden"
-                        onChange={(event) => {
+                        onChange={(
+                            event
+                        ) => {
                             const file =
                                 event.target
                                     .files?.[0] ??
                                 null;
 
                             if (!file) {
-                                setImage(null);
-                                setImageName("");
                                 return;
                             }
 
@@ -298,6 +430,7 @@ export function CreatePostForm({
                                 setErrorMessage(
                                     "이미지 파일만 선택해주세요."
                                 );
+
                                 event.target.value =
                                     "";
                                 return;
@@ -305,35 +438,158 @@ export function CreatePostForm({
 
                             if (
                                 file.size >
-                                5 * 1024 * 1024
+                                5 *
+                                1024 *
+                                1024
                             ) {
                                 setErrorMessage(
                                     "사진은 5MB 이하만 업로드할 수 있습니다."
                                 );
+
                                 event.target.value =
                                     "";
                                 return;
                             }
 
                             setImage(file);
-                            setImageName(
-                                file.name
+                            setErrorMessage(
+                                ""
                             );
-                            setErrorMessage("");
                         }}
                     />
                 </label>
 
                 <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="rounded-full bg-black px-5 py-2.5 text-[13px] font-bold text-white transition hover:bg-gray-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={
+                        isSubmitting ||
+                        (!content.trim() &&
+                            !image)
+                    }
+                    className="flex h-10 min-w-[82px] items-center justify-center rounded-full bg-gray-950 px-5 text-[13px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                 >
-                    {isSubmitting
-                        ? "공유 중..."
-                        : "공유하기"}
+                    {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                            <LoadingIcon />
+                            공유 중
+                        </span>
+                    ) : (
+                        "공유하기"
+                    )}
                 </button>
             </div>
         </form>
+    );
+}
+
+function UserIcon() {
+    return (
+        <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="M20 21a8 8 0 0 0-16 0"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+
+            <circle
+                cx="12"
+                cy="7"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+        </svg>
+    );
+}
+
+function ImageIcon() {
+    return (
+        <svg
+            width="19"
+            height="19"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <rect
+                x="3"
+                y="4"
+                width="18"
+                height="16"
+                rx="3"
+                stroke="currentColor"
+                strokeWidth="1.7"
+            />
+
+            <circle
+                cx="9"
+                cy="9"
+                r="1.7"
+                stroke="currentColor"
+                strokeWidth="1.7"
+            />
+
+            <path
+                d="m5.5 18 4.6-4.8a2 2 0 0 1 2.9 0l1.6 1.7 1.2-1.2a2 2 0 0 1 2.8 0L21 16.2"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function CloseIcon() {
+    return (
+        <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="m7 7 10 10M17 7 7 17"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
+function LoadingIcon() {
+    return (
+        <svg
+            className="h-3.5 w-3.5 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeWidth="3"
+                className="opacity-25"
+            />
+
+            <path
+                d="M21 12a9 9 0 0 0-9-9"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                className="opacity-90"
+            />
+        </svg>
     );
 }
