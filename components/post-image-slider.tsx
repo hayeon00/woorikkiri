@@ -23,16 +23,14 @@ export function PostImageSlider({
         useState(0);
 
     const scrollTimer =
-        useRef<ReturnType<
-            typeof setTimeout
-        > | null>(null);
+        useRef<ReturnType<typeof setTimeout> | null>(
+            null
+        );
 
     useEffect(() => {
         return () => {
             if (scrollTimer.current) {
-                clearTimeout(
-                    scrollTimer.current
-                );
+                clearTimeout(scrollTimer.current);
             }
         };
     }, []);
@@ -42,15 +40,13 @@ export function PostImageSlider({
     }
 
     function updateCurrentIndex() {
-        const slider =
-            sliderRef.current;
+        const slider = sliderRef.current;
 
         if (!slider) {
             return;
         }
 
-        const width =
-            slider.clientWidth;
+        const width = slider.clientWidth;
 
         if (width <= 0) {
             return;
@@ -73,9 +69,7 @@ export function PostImageSlider({
 
     function handleScroll() {
         if (scrollTimer.current) {
-            clearTimeout(
-                scrollTimer.current
-            );
+            clearTimeout(scrollTimer.current);
         }
 
         scrollTimer.current =
@@ -85,8 +79,7 @@ export function PostImageSlider({
     }
 
     function goToImage(index: number) {
-        const slider =
-            sliderRef.current;
+        const slider = sliderRef.current;
 
         if (!slider) {
             return;
@@ -111,20 +104,20 @@ export function PostImageSlider({
     }
 
     function goPrevious() {
-        goToImage(currentIndex - 1);
+        goToImage(
+            currentIndex - 1
+        );
     }
 
     function goNext() {
-        goToImage(currentIndex + 1);
+        goToImage(
+            currentIndex + 1
+        );
     }
 
     return (
         <div className="relative w-full">
-
-            {/* ========================================
-                사진 영역
-            ======================================== */}
-
+            {/* 사진 영역 */}
             <div
                 className="
                     group
@@ -132,14 +125,11 @@ export function PostImageSlider({
                     aspect-square
                     w-full
                     overflow-hidden
-                    bg-gray-100
+                    bg-[#f3f3f3]
                     sm:rounded-[16px]
                 "
             >
-                {/* ========================================
-                    슬라이더
-                ======================================== */}
-
+                {/* 실제 캐러셀 */}
                 <div
                     ref={sliderRef}
                     onScroll={handleScroll}
@@ -158,6 +148,8 @@ export function PostImageSlider({
                     style={{
                         WebkitOverflowScrolling:
                             "touch",
+                        touchAction:
+                            "pan-x pan-y",
                     }}
                 >
                     {images.map(
@@ -177,7 +169,7 @@ export function PostImageSlider({
                                     snap-center
                                     snap-always
                                     overflow-hidden
-                                    bg-gray-100
+                                    bg-[#f3f3f3]
                                 "
                             >
                                 <img
@@ -185,17 +177,19 @@ export function PostImageSlider({
                                         image.image_url
                                     }
                                     alt={`게시글 사진 ${
-                                        index +
-                                        1
+                                        index + 1
                                     }`}
                                     draggable={
                                         false
                                     }
                                     className="
+                                        absolute
+                                        inset-0
                                         h-full
                                         w-full
                                         select-none
                                         object-cover
+                                        object-center
                                     "
                                 />
                             </div>
@@ -203,10 +197,7 @@ export function PostImageSlider({
                     )}
                 </div>
 
-                {/* ========================================
-                    사진 번호
-                ======================================== */}
-
+                {/* 사진 번호 */}
                 {images.length > 1 && (
                     <div
                         className="
@@ -219,8 +210,8 @@ export function PostImageSlider({
                             bg-black/55
                             px-2.5
                             py-1.5
-                            text-[10px]
-                            font-bold
+                            text-[11px]
+                            font-semibold
                             leading-none
                             text-white
                             shadow-sm
@@ -229,7 +220,7 @@ export function PostImageSlider({
                     >
                         {currentIndex + 1}
 
-                        <span className="mx-1 opacity-60">
+                        <span className="mx-1 text-white/50">
                             /
                         </span>
 
@@ -237,10 +228,7 @@ export function PostImageSlider({
                     </div>
                 )}
 
-                {/* ========================================
-                    PC 이전 버튼
-                ======================================== */}
-
+                {/* PC 이전 버튼 */}
                 {images.length > 1 &&
                     currentIndex > 0 && (
                         <button
@@ -261,7 +249,7 @@ export function PostImageSlider({
                                 items-center
                                 justify-center
                                 rounded-full
-                                bg-black/45
+                                bg-black/40
                                 text-white
                                 opacity-0
                                 shadow-md
@@ -277,10 +265,7 @@ export function PostImageSlider({
                         </button>
                     )}
 
-                {/* ========================================
-                    PC 다음 버튼
-                ======================================== */}
-
+                {/* PC 다음 버튼 */}
                 {images.length > 1 &&
                     currentIndex <
                     images.length - 1 && (
@@ -302,7 +287,7 @@ export function PostImageSlider({
                                 items-center
                                 justify-center
                                 rounded-full
-                                bg-black/45
+                                bg-black/40
                                 text-white
                                 opacity-0
                                 shadow-md
@@ -319,10 +304,7 @@ export function PostImageSlider({
                     )}
             </div>
 
-            {/* ========================================
-                페이지 표시 점
-            ======================================== */}
-
+            {/* 페이지 점 */}
             {images.length > 1 && (
                 <div
                     className="
@@ -351,12 +333,12 @@ export function PostImageSlider({
                                 aria-label={`사진 ${
                                     index + 1
                                 }번 보기`}
-                                className={`rounded-full transition-all duration-200 ${
+                                className={
                                     index ===
                                     currentIndex
-                                        ? "h-1.5 w-4 bg-gray-800"
-                                        : "h-1.5 w-1.5 bg-gray-300"
-                                }`}
+                                        ? "h-1.5 w-4 rounded-full bg-gray-800 transition-all duration-200"
+                                        : "h-1.5 w-1.5 rounded-full bg-gray-300 transition-all duration-200"
+                                }
                             />
                         )
                     )}

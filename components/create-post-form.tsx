@@ -26,10 +26,8 @@ export function CreatePostForm({
     const [images, setImages] =
         useState<File[]>([]);
 
-    const [
-        previewUrls,
-        setPreviewUrls,
-    ] = useState<string[]>([]);
+    const [previewUrls, setPreviewUrls] =
+        useState<string[]>([]);
 
     const [
         currentPreviewIndex,
@@ -39,15 +37,11 @@ export function CreatePostForm({
     const [isExpanded, setIsExpanded] =
         useState(false);
 
-    const [
-        isSubmitting,
-        setIsSubmitting,
-    ] = useState(false);
+    const [isSubmitting, setIsSubmitting] =
+        useState(false);
 
-    const [
-        errorMessage,
-        setErrorMessage,
-    ] = useState("");
+    const [errorMessage, setErrorMessage] =
+        useState("");
 
     const fileInputRef =
         useRef<HTMLInputElement>(null);
@@ -55,11 +49,13 @@ export function CreatePostForm({
     const textareaRef =
         useRef<HTMLTextAreaElement>(null);
 
-    const touchStartX =
-        useRef<number | null>(null);
+    const previewSliderRef =
+        useRef<HTMLDivElement>(null);
 
-    const touchEndX =
-        useRef<number | null>(null);
+    const previewScrollTimer =
+        useRef<ReturnType<typeof setTimeout> | null>(
+            null
+        );
 
     // ========================================
     // 사진 미리보기 URL
@@ -100,7 +96,7 @@ export function CreatePostForm({
     }, [isExpanded]);
 
     // ========================================
-    // 현재 사진 인덱스 보정
+    // 미리보기 인덱스 보정
     // ========================================
 
     useEffect(() => {
@@ -118,74 +114,113 @@ export function CreatePostForm({
         );
     }, [images.length]);
 
-    function goPreviousPreview() {
+    // ========================================
+    // 스크롤 타이머 정리
+    // ========================================
+
+    useEffect(() => {
+        return () => {
+            if (
+                previewScrollTimer.current
+            ) {
+                clearTimeout(
+                    previewScrollTimer.current
+                );
+            }
+        };
+    }, []);
+
+    // ========================================
+    // 현재 미리보기 위치 계산
+    // ========================================
+
+    function updatePreviewIndex() {
+        const slider =
+            previewSliderRef.current;
+
+        if (!slider) {
+            return;
+        }
+
+        const width =
+            slider.clientWidth;
+
+        if (width <= 0) {
+            return;
+        }
+
+        const index = Math.round(
+            slider.scrollLeft / width
+        );
+
         setCurrentPreviewIndex(
-            (current) =>
-                Math.max(
-                    0,
-                    current - 1
+            Math.max(
+                0,
+                Math.min(
+                    previewUrls.length - 1,
+                    index
                 )
+            )
+        );
+    }
+
+    function handlePreviewScroll() {
+        if (
+            previewScrollTimer.current
+        ) {
+            clearTimeout(
+                previewScrollTimer.current
+            );
+        }
+
+        previewScrollTimer.current =
+            setTimeout(() => {
+                updatePreviewIndex();
+            }, 40);
+    }
+
+    // ========================================
+    // 원하는 사진으로 이동
+    // ========================================
+
+    function goToPreview(index: number) {
+        const slider =
+            previewSliderRef.current;
+
+        if (!slider) {
+            return;
+        }
+
+        const safeIndex = Math.max(
+            0,
+            Math.min(
+                previewUrls.length - 1,
+                index
+            )
+        );
+
+        slider.scrollTo({
+            left:
+                slider.clientWidth *
+                safeIndex,
+            behavior: "smooth",
+        });
+
+        setCurrentPreviewIndex(
+            safeIndex
+        );
+    }
+
+    function goPreviousPreview() {
+        goToPreview(
+            currentPreviewIndex - 1
         );
     }
 
     function goNextPreview() {
-        setCurrentPreviewIndex(
-            (current) =>
-                Math.min(
-                    images.length - 1,
-                    current + 1
-                )
+        goToPreview(
+            currentPreviewIndex + 1
         );
-    }
-
-    function handleTouchStart(
-        event: React.TouchEvent<HTMLDivElement>
-    ) {
-        touchEndX.current = null;
-
-        touchStartX.current =
-            event.targetTouches[0]
-                ?.clientX ?? null;
-    }
-
-    function handleTouchMove(
-        event: React.TouchEvent<HTMLDivElement>
-    ) {
-        touchEndX.current =
-            event.targetTouches[0]
-                ?.clientX ?? null;
-    }
-
-    function handleTouchEnd() {
-        if (
-            touchStartX.current === null ||
-            touchEndX.current === null
-        ) {
-            return;
-        }
-
-        const distance =
-            touchStartX.current -
-            touchEndX.current;
-
-        const minimumSwipeDistance = 45;
-
-        if (
-            distance >
-            minimumSwipeDistance
-        ) {
-            goNextPreview();
-        }
-
-        if (
-            distance <
-            -minimumSwipeDistance
-        ) {
-            goPreviousPreview();
-        }
-
-        touchStartX.current = null;
-        touchEndX.current = null;
     }
 
     // ========================================
@@ -193,6 +228,17 @@ export function CreatePostForm({
     // ========================================
 
     function removeImage(index: number) {
+        const nextLength =
+            images.length - 1;
+
+        const nextIndex =
+            nextLength <= 0
+                ? 0
+                : Math.min(
+                    index,
+                    nextLength - 1
+                );
+
         setImages((current) =>
             current.filter(
                 (_, imageIndex) =>
@@ -201,19 +247,31 @@ export function CreatePostForm({
         );
 
         setCurrentPreviewIndex(
-            (current) =>
-                Math.max(
-                    0,
-                    Math.min(
-                        current,
-                        images.length - 2
-                    )
-                )
+            nextIndex
         );
 
         if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            fileInputRef.current.value =
+                "";
         }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const slider =
+                    previewSliderRef.current;
+
+                if (!slider) {
+                    return;
+                }
+
+                slider.scrollTo({
+                    left:
+                        slider.clientWidth *
+                        nextIndex,
+                    behavior: "auto",
+                });
+            });
+        });
     }
 
     // ========================================
@@ -232,7 +290,8 @@ export function CreatePostForm({
         setIsExpanded(false);
 
         if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+            fileInputRef.current.value =
+                "";
         }
 
         if (textareaRef.current) {
@@ -267,7 +326,10 @@ export function CreatePostForm({
             return;
         }
 
-        if (trimmedContent.length > 500) {
+        if (
+            trimmedContent.length >
+            500
+        ) {
             setErrorMessage(
                 "글은 500자 이하로 입력해주세요."
             );
@@ -320,13 +382,19 @@ export function CreatePostForm({
             } =
                 await supabase.auth.getUser();
 
-            if (userError || !user) {
+            if (
+                userError ||
+                !user
+            ) {
                 throw new Error(
                     "로그인이 필요합니다."
                 );
             }
 
+            // ========================================
             // 사진 직접 Storage 업로드
+            // ========================================
+
             for (const image of images) {
                 const extension =
                     image.name
@@ -339,8 +407,7 @@ export function CreatePostForm({
                     `${user.id}/${crypto.randomUUID()}.${extension}`;
 
                 const {
-                    error:
-                        uploadError,
+                    error: uploadError,
                 } =
                     await supabase.storage
                         .from(
@@ -389,31 +456,40 @@ export function CreatePostForm({
                 }
             );
 
-            await createPost(formData);
+            await createPost(
+                formData
+            );
 
             setContent("");
             setImages([]);
             setCurrentPreviewIndex(0);
             setIsExpanded(false);
 
-            if (fileInputRef.current) {
+            if (
+                fileInputRef.current
+            ) {
                 fileInputRef.current.value =
                     "";
             }
 
-            if (textareaRef.current) {
+            if (
+                textareaRef.current
+            ) {
                 textareaRef.current.style.height =
                     "auto";
             }
         } catch (error) {
             // 게시글 등록 실패 시
-            // 이미 올라간 Storage 사진 정리
+            // 이미 Storage에 올라간 사진 정리
+
             if (
                 uploadedImagePaths.length >
                 0
             ) {
                 await supabase.storage
-                    .from("post-images")
+                    .from(
+                        "post-images"
+                    )
                     .remove(
                         uploadedImagePaths
                     );
@@ -474,11 +550,6 @@ export function CreatePostForm({
                 previewUrls.length - 1
             )
         );
-
-    const currentPreviewUrl =
-        previewUrls[
-            safePreviewIndex
-            ];
 
     // ========================================
     // 작성창
@@ -592,141 +663,241 @@ export function CreatePostForm({
                 </div>
 
                 {/* ========================================
-                    사진 미리보기
+                    사진 미리보기 캐러셀
                 ======================================== */}
 
-                {currentPreviewUrl && (
-                    <div className="mt-4">
-                        <div
-                            className="relative aspect-square w-full overflow-hidden rounded-[20px] bg-gray-100"
-                            onTouchStart={
-                                handleTouchStart
-                            }
-                            onTouchMove={
-                                handleTouchMove
-                            }
-                            onTouchEnd={
-                                handleTouchEnd
-                            }
-                        >
-                            <img
-                                src={
-                                    currentPreviewUrl
-                                }
-                                alt={`선택한 사진 ${
-                                    safePreviewIndex +
-                                    1
-                                }`}
-                                draggable={
-                                    false
-                                }
-                                className="absolute inset-0 h-full w-full select-none object-cover"
-                            />
+                {previewUrls.length >
+                    0 && (
+                        <div className="mt-4">
+                            <div className="group relative aspect-square w-full overflow-hidden rounded-[20px] bg-[#f3f3f3]">
 
-                            {/* 사진 번호 */}
-                            {previewUrls.length >
-                                1 && (
-                                    <div className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
-                                        {safePreviewIndex +
-                                            1}{" "}
-                                        /{" "}
-                                        {
-                                            previewUrls.length
-                                        }
-                                    </div>
-                                )}
-
-                            {/* 삭제 */}
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    removeImage(
-                                        safePreviewIndex
-                                    )
-                                }
-                                disabled={
-                                    isSubmitting
-                                }
-                                aria-label="현재 사진 제거"
-                                className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 active:scale-95 disabled:opacity-50"
-                            >
-                                <CloseIcon />
-                            </button>
-
-                            {/* 이전 */}
-                            {safePreviewIndex >
-                                0 && (
-                                    <button
-                                        type="button"
-                                        onClick={
-                                            goPreviousPreview
-                                        }
-                                        aria-label="이전 사진"
-                                        className="absolute left-3 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
-                                    >
-                                        <ChevronLeftIcon />
-                                    </button>
-                                )}
-
-                            {/* 다음 */}
-                            {safePreviewIndex <
-                                previewUrls.length -
-                                1 && (
-                                    <button
-                                        type="button"
-                                        onClick={
-                                            goNextPreview
-                                        }
-                                        aria-label="다음 사진"
-                                        className="absolute right-3 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
-                                    >
-                                        <ChevronRightIcon />
-                                    </button>
-                                )}
-                        </div>
-
-                        {/* 페이지 점 */}
-                        {previewUrls.length >
-                            1 && (
-                                <div className="mt-2.5 flex justify-center gap-1.5">
+                                {/* 실제 좌우 캐러셀 */}
+                                <div
+                                    ref={
+                                        previewSliderRef
+                                    }
+                                    onScroll={
+                                        handlePreviewScroll
+                                    }
+                                    className="
+                                    flex
+                                    h-full
+                                    w-full
+                                    snap-x
+                                    snap-mandatory
+                                    overflow-x-auto
+                                    overscroll-x-contain
+                                    [scrollbar-width:none]
+                                    [-ms-overflow-style:none]
+                                    [&::-webkit-scrollbar]:hidden
+                                "
+                                    style={{
+                                        WebkitOverflowScrolling:
+                                            "touch",
+                                        touchAction:
+                                            "pan-x pan-y",
+                                    }}
+                                >
                                     {previewUrls.map(
                                         (
                                             previewUrl,
                                             index
                                         ) => (
-                                            <button
+                                            <div
                                                 key={
                                                     previewUrl
                                                 }
-                                                type="button"
-                                                onClick={() =>
-                                                    setCurrentPreviewIndex(
-                                                        index
-                                                    )
-                                                }
-                                                aria-label={`${
-                                                    index +
-                                                    1
-                                                }번째 사진 보기`}
-                                                className={`h-1.5 rounded-full transition-all ${
-                                                    index ===
-                                                    safePreviewIndex
-                                                        ? "w-4 bg-gray-800"
-                                                        : "w-1.5 bg-gray-300"
-                                                }`}
-                                            />
+                                                className="
+                                                relative
+                                                h-full
+                                                min-w-full
+                                                shrink-0
+                                                snap-center
+                                                snap-always
+                                                overflow-hidden
+                                                bg-[#f3f3f3]
+                                            "
+                                            >
+                                                <img
+                                                    src={
+                                                        previewUrl
+                                                    }
+                                                    alt={`선택한 사진 ${
+                                                        index +
+                                                        1
+                                                    }`}
+                                                    draggable={
+                                                        false
+                                                    }
+                                                    className="
+                                                    absolute
+                                                    inset-0
+                                                    h-full
+                                                    w-full
+                                                    select-none
+                                                    object-cover
+                                                    object-center
+                                                "
+                                                />
+                                            </div>
                                         )
                                     )}
                                 </div>
-                            )}
-                    </div>
-                )}
+
+                                {/* 사진 번호 */}
+                                {previewUrls.length >
+                                    1 && (
+                                        <div className="pointer-events-none absolute left-3 top-3 z-20 rounded-full bg-black/55 px-2.5 py-1.5 text-[11px] font-semibold leading-none text-white shadow-sm backdrop-blur-md">
+                                            {safePreviewIndex +
+                                                1}
+
+                                            <span className="mx-1 text-white/50">
+                                        /
+                                    </span>
+
+                                            {
+                                                previewUrls.length
+                                            }
+                                        </div>
+                                    )}
+
+                                {/* 현재 사진 삭제 */}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        removeImage(
+                                            safePreviewIndex
+                                        )
+                                    }
+                                    disabled={
+                                        isSubmitting
+                                    }
+                                    aria-label="현재 사진 제거"
+                                    className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-md backdrop-blur-md transition hover:bg-black/70 active:scale-95 disabled:opacity-50"
+                                >
+                                    <CloseIcon />
+                                </button>
+
+                                {/* PC 이전 */}
+                                {previewUrls.length >
+                                    1 &&
+                                    safePreviewIndex >
+                                    0 && (
+                                        <button
+                                            type="button"
+                                            onClick={
+                                                goPreviousPreview
+                                            }
+                                            aria-label="이전 사진"
+                                            className="
+                                            absolute
+                                            left-3
+                                            top-1/2
+                                            z-30
+                                            hidden
+                                            h-10
+                                            w-10
+                                            -translate-y-1/2
+                                            items-center
+                                            justify-center
+                                            rounded-full
+                                            bg-black/40
+                                            text-white
+                                            opacity-0
+                                            shadow-md
+                                            backdrop-blur-md
+                                            transition-all
+                                            duration-200
+                                            hover:bg-black/60
+                                            group-hover:opacity-100
+                                            sm:flex
+                                        "
+                                        >
+                                            <ChevronLeftIcon />
+                                        </button>
+                                    )}
+
+                                {/* PC 다음 */}
+                                {previewUrls.length >
+                                    1 &&
+                                    safePreviewIndex <
+                                    previewUrls.length -
+                                    1 && (
+                                        <button
+                                            type="button"
+                                            onClick={
+                                                goNextPreview
+                                            }
+                                            aria-label="다음 사진"
+                                            className="
+                                            absolute
+                                            right-3
+                                            top-1/2
+                                            z-30
+                                            hidden
+                                            h-10
+                                            w-10
+                                            -translate-y-1/2
+                                            items-center
+                                            justify-center
+                                            rounded-full
+                                            bg-black/40
+                                            text-white
+                                            opacity-0
+                                            shadow-md
+                                            backdrop-blur-md
+                                            transition-all
+                                            duration-200
+                                            hover:bg-black/60
+                                            group-hover:opacity-100
+                                            sm:flex
+                                        "
+                                        >
+                                            <ChevronRightIcon />
+                                        </button>
+                                    )}
+                            </div>
+
+                            {/* 페이지 점 */}
+                            {previewUrls.length >
+                                1 && (
+                                    <div className="flex h-7 items-center justify-center gap-1.5">
+                                        {previewUrls.map(
+                                            (
+                                                previewUrl,
+                                                index
+                                            ) => (
+                                                <button
+                                                    key={
+                                                        previewUrl
+                                                    }
+                                                    type="button"
+                                                    onClick={() =>
+                                                        goToPreview(
+                                                            index
+                                                        )
+                                                    }
+                                                    aria-label={`${
+                                                        index +
+                                                        1
+                                                    }번째 사진 보기`}
+                                                    className={
+                                                        index ===
+                                                        safePreviewIndex
+                                                            ? "h-1.5 w-4 rounded-full bg-gray-800 transition-all duration-200"
+                                                            : "h-1.5 w-1.5 rounded-full bg-gray-300 transition-all duration-200"
+                                                    }
+                                                />
+                                            )
+                                        )}
+                                    </div>
+                                )}
+                        </div>
+                    )}
 
                 {errorMessage && (
                     <div className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-500">
-                        {
-                            errorMessage
-                        }
+                        {errorMessage}
                     </div>
                 )}
             </div>
@@ -746,8 +917,7 @@ export function CreatePostForm({
                     <ImageIcon />
 
                     <span>
-                        {images.length >
-                        0
+                        {images.length > 0
                             ? `사진 추가 (${images.length}/5)`
                             : "사진 추가"}
                     </span>
@@ -761,8 +931,7 @@ export function CreatePostForm({
                         multiple
                         disabled={
                             isSubmitting ||
-                            images.length >=
-                            5
+                            images.length >= 5
                         }
                         className="hidden"
                         onChange={(
@@ -799,9 +968,7 @@ export function CreatePostForm({
 
                             const invalidFile =
                                 selectedFiles.find(
-                                    (
-                                        file
-                                    ) =>
+                                    (file) =>
                                         !file.type.startsWith(
                                             "image/"
                                         )
@@ -821,9 +988,7 @@ export function CreatePostForm({
 
                             const oversizedFile =
                                 selectedFiles.find(
-                                    (
-                                        file
-                                    ) =>
+                                    (file) =>
                                         file.size >
                                         5 *
                                         1024 *
@@ -842,10 +1007,11 @@ export function CreatePostForm({
                                 return;
                             }
 
+                            const previousLength =
+                                images.length;
+
                             setImages(
-                                (
-                                    current
-                                ) => [
+                                (current) => [
                                     ...current,
                                     ...selectedFiles,
                                 ]
@@ -853,6 +1019,38 @@ export function CreatePostForm({
 
                             setErrorMessage(
                                 ""
+                            );
+
+                            // 새로 추가한 첫 번째 사진으로 이동
+                            setCurrentPreviewIndex(
+                                previousLength
+                            );
+
+                            requestAnimationFrame(
+                                () => {
+                                    requestAnimationFrame(
+                                        () => {
+                                            const slider =
+                                                previewSliderRef.current;
+
+                                            if (
+                                                !slider
+                                            ) {
+                                                return;
+                                            }
+
+                                            slider.scrollTo(
+                                                {
+                                                    left:
+                                                        slider.clientWidth *
+                                                        previousLength,
+                                                    behavior:
+                                                        "smooth",
+                                                }
+                                            );
+                                        }
+                                    );
+                                }
                             );
 
                             event.target.value =
