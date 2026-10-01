@@ -18,6 +18,11 @@ export function FeedRealtime({
         const supabase =
             createClient();
 
+        console.log(
+            "[Realtime] 시작",
+            groupId
+        );
+
         const channel = supabase
             .channel(
                 `feed-realtime-${groupId}`
@@ -30,13 +35,27 @@ export function FeedRealtime({
                     table: "posts",
                     filter: `group_id=eq.${groupId}`,
                 },
-                () => {
+                (payload) => {
+                    console.log(
+                        "[Realtime] 게시글 변경 감지",
+                        payload
+                    );
+
                     router.refresh();
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log(
+                    "[Realtime] 상태:",
+                    status
+                );
+            });
 
         return () => {
+            console.log(
+                "[Realtime] 종료"
+            );
+
             supabase.removeChannel(
                 channel
             );
