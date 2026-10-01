@@ -6,6 +6,8 @@ import { GroupSwitcher } from "@/components/group-switcher";
 import { CreatePostForm } from "@/components/create-post-form";
 import { PostMenu } from "@/components/post-menu";
 import { CommentDeleteButton } from "@/components/comment-delete-button";
+import { CommentForm } from "@/components/comment-form";
+import { CommentList } from "@/components/comment-list";
 
 import {
     toggleLike,
@@ -1088,132 +1090,20 @@ async function Feed({
                                                     </div>
 
                                                     {/* 댓글 목록 */}
-                                                    {post.comments
-                                                            ?.length >
-                                                        0 && (
-                                                            <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
-
-                                                                {post.comments
-                                                                    .sort(
-                                                                        (
-                                                                            a: any,
-                                                                            b: any
-                                                                        ) =>
-                                                                            new Date(
-                                                                                a.created_at
-                                                                            ).getTime() -
-                                                                            new Date(
-                                                                                b.created_at
-                                                                            ).getTime()
-                                                                    )
-                                                                    .map(
-                                                                        (
-                                                                            comment: any
-                                                                        ) => (
-                                                                            <div
-                                                                                key={
-                                                                                    comment.id
-                                                                                }
-                                                                                className="flex items-start gap-2.5"
-                                                                            >
-                                                                                {comment.avatar_url ? (
-                                                                                    <img
-                                                                                        src={
-                                                                                            comment.avatar_url
-                                                                                        }
-                                                                                        alt="댓글 작성자"
-                                                                                        className="h-7 w-7 shrink-0 rounded-full object-cover"
-                                                                                    />
-                                                                                ) : (
-                                                                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                                                                                        <UserIcon />
-                                                                                    </div>
-                                                                                )}
-
-                                                                                <div className="min-w-0 flex-1">
-                                                                                    <div className="text-[12px] leading-5">
-                                                                                    <span className="mr-2 font-black">
-                                                                                        {comment
-                                                                                                .profiles
-                                                                                                ?.nickname ??
-                                                                                            "탈퇴한 사용자"}
-                                                                                    </span>
-
-                                                                                        <span className="break-words text-gray-700">
-                                                                                        {
-                                                                                            comment.content
-                                                                                        }
-                                                                                    </span>
-                                                                                    </div>
-
-                                                                                    {comment.user_id ===
-                                                                                        user.id && (
-                                                                                            <CommentDeleteButton
-                                                                                                commentId={
-                                                                                                    comment.id
-                                                                                                }
-                                                                                                deleteAction={
-                                                                                                    deleteCommentAction
-                                                                                                }
-                                                                                            />
-                                                                                        )}
-                                                                                </div>
-                                                                            </div>
-                                                                        )
-                                                                    )}
-                                                            </div>
-                                                        )}
+                                                    <CommentList
+                                                        comments={post.comments ?? []}
+                                                        currentUserId={user.id}
+                                                        deleteAction={
+                                                            deleteCommentAction
+                                                        }
+                                                    />
 
                                                     {/* 댓글 작성 */}
-                                                    <form
-                                                        action={
-                                                            createComment
-                                                        }
-                                                        className="mt-4 flex items-center gap-2"
-                                                    >
-                                                        <input
-                                                            type="hidden"
-                                                            name="post_id"
-                                                            value={
-                                                                post.id
-                                                            }
-                                                        />
-
-                                                        {myAvatarUrl ? (
-                                                            <img
-                                                                src={
-                                                                    myAvatarUrl
-                                                                }
-                                                                alt="내 프로필"
-                                                                className="h-7 w-7 shrink-0 rounded-full object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                                                                <UserIcon />
-                                                            </div>
-                                                        )}
-
-                                                        <div className="flex min-w-0 flex-1 items-center rounded-full bg-[#f5f5f5]">
-                                                            <input
-                                                                type="text"
-                                                                name="content"
-                                                                maxLength={
-                                                                    300
-                                                                }
-                                                                required
-                                                                placeholder="댓글 남기기..."
-                                                                className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[12px] outline-none placeholder:text-gray-400"
-                                                            />
-
-                                                            <button
-                                                                type="submit"
-                                                                aria-label="댓글 등록"
-                                                                className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-950 text-white transition active:scale-90"
-                                                            >
-                                                                <ArrowUpIcon />
-                                                            </button>
-                                                        </div>
-                                                    </form>
+                                                    <CommentForm
+                                                        postId={post.id}
+                                                        avatarUrl={myAvatarUrl}
+                                                        createAction={createComment}
+                                                    />
                                                 </div>
                                             </article>
                                         )
