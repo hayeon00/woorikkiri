@@ -8,6 +8,7 @@ import { PostMenu } from "@/components/post-menu";
 import { CommentForm } from "@/components/comment-form";
 import { CommentList } from "@/components/comment-list";
 import { PostImageSlider } from "@/components/post-image-slider";
+import { FeedRealtime } from "@/components/feed-realtime";
 
 import {
     toggleLike,
@@ -535,6 +536,12 @@ async function Feed({
 
     return (
         <main className="min-h-screen bg-[#f6f6f4] text-[#111]">
+            {currentGroup && (
+                <FeedRealtime
+                    groupId={currentGroup.id}
+                />
+            )}
+
             <div className="mx-auto min-h-screen w-full xl:grid xl:max-w-[1360px] xl:grid-cols-[250px_minmax(0,760px)_300px] xl:gap-6 xl:px-4 2xl:px-0">
 
                 {/* ========================================
