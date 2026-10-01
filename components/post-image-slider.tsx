@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    useEffect,
     useRef,
     useState,
 } from "react";
@@ -15,142 +16,273 @@ export function PostImageSlider({
                                 }: {
     images: PostImage[];
 }) {
+    const sliderRef =
+        useRef<HTMLDivElement>(null);
+
     const [currentIndex, setCurrentIndex] =
         useState(0);
 
-    const touchStartX =
-        useRef<number | null>(null);
+    const scrollTimer =
+        useRef<ReturnType<
+            typeof setTimeout
+        > | null>(null);
 
-    const touchEndX =
-        useRef<number | null>(null);
+    useEffect(() => {
+        return () => {
+            if (scrollTimer.current) {
+                clearTimeout(
+                    scrollTimer.current
+                );
+            }
+        };
+    }, []);
 
     if (images.length === 0) {
         return null;
     }
 
-    const safeIndex = Math.min(
-        currentIndex,
-        images.length - 1
-    );
+    function updateCurrentIndex() {
+        const slider =
+            sliderRef.current;
 
-    const currentImage =
-        images[safeIndex];
+        if (!slider) {
+            return;
+        }
 
-    function goPrevious() {
-        setCurrentIndex((current) =>
-            Math.max(0, current - 1)
+        const width =
+            slider.clientWidth;
+
+        if (width <= 0) {
+            return;
+        }
+
+        const index = Math.round(
+            slider.scrollLeft / width
         );
-    }
 
-    function goNext() {
-        setCurrentIndex((current) =>
-            Math.min(
-                images.length - 1,
-                current + 1
+        setCurrentIndex(
+            Math.max(
+                0,
+                Math.min(
+                    images.length - 1,
+                    index
+                )
             )
         );
     }
 
-    function handleTouchStart(
-        event: React.TouchEvent<HTMLDivElement>
-    ) {
-        touchEndX.current = null;
+    function handleScroll() {
+        if (scrollTimer.current) {
+            clearTimeout(
+                scrollTimer.current
+            );
+        }
 
-        touchStartX.current =
-            event.targetTouches[0]
-                ?.clientX ?? null;
+        scrollTimer.current =
+            setTimeout(() => {
+                updateCurrentIndex();
+            }, 40);
     }
 
-    function handleTouchMove(
-        event: React.TouchEvent<HTMLDivElement>
-    ) {
-        touchEndX.current =
-            event.targetTouches[0]
-                ?.clientX ?? null;
-    }
+    function goToImage(index: number) {
+        const slider =
+            sliderRef.current;
 
-    function handleTouchEnd() {
-        if (
-            touchStartX.current === null ||
-            touchEndX.current === null
-        ) {
+        if (!slider) {
             return;
         }
 
-        const distance =
-            touchStartX.current -
-            touchEndX.current;
+        const safeIndex = Math.max(
+            0,
+            Math.min(
+                images.length - 1,
+                index
+            )
+        );
 
-        const minimumSwipeDistance = 45;
+        slider.scrollTo({
+            left:
+                slider.clientWidth *
+                safeIndex,
+            behavior: "smooth",
+        });
 
-        if (
-            distance >
-            minimumSwipeDistance
-        ) {
-            goNext();
-        }
+        setCurrentIndex(safeIndex);
+    }
 
-        if (
-            distance <
-            -minimumSwipeDistance
-        ) {
-            goPrevious();
-        }
+    function goPrevious() {
+        goToImage(currentIndex - 1);
+    }
 
-        touchStartX.current = null;
-        touchEndX.current = null;
+    function goNext() {
+        goToImage(currentIndex + 1);
     }
 
     return (
-        <div className="px-2 sm:px-3">
-            <div
-                className="relative aspect-square w-full overflow-hidden rounded-[20px] bg-gray-100"
-                onTouchStart={
-                    handleTouchStart
-                }
-                onTouchMove={
-                    handleTouchMove
-                }
-                onTouchEnd={
-                    handleTouchEnd
-                }
-            >
-                {/* 현재 사진 */}
-                <img
-                    src={
-                        currentImage.image_url
-                    }
-                    alt={`게시글 사진 ${
-                        safeIndex + 1
-                    }`}
-                    draggable={false}
-                    className="absolute inset-0 h-full w-full select-none object-cover"
-                />
+        <div className="relative w-full">
 
-                {/* 사진 번호 */}
+            {/* ========================================
+                사진 영역
+            ======================================== */}
+
+            <div
+                className="
+                    group
+                    relative
+                    aspect-square
+                    w-full
+                    overflow-hidden
+                    bg-gray-100
+                    sm:rounded-[16px]
+                "
+            >
+                {/* ========================================
+                    슬라이더
+                ======================================== */}
+
+                <div
+                    ref={sliderRef}
+                    onScroll={handleScroll}
+                    className="
+                        flex
+                        h-full
+                        w-full
+                        snap-x
+                        snap-mandatory
+                        overflow-x-auto
+                        overscroll-x-contain
+                        [scrollbar-width:none]
+                        [-ms-overflow-style:none]
+                        [&::-webkit-scrollbar]:hidden
+                    "
+                    style={{
+                        WebkitOverflowScrolling:
+                            "touch",
+                    }}
+                >
+                    {images.map(
+                        (
+                            image,
+                            index
+                        ) => (
+                            <div
+                                key={
+                                    image.id
+                                }
+                                className="
+                                    relative
+                                    h-full
+                                    min-w-full
+                                    shrink-0
+                                    snap-center
+                                    snap-always
+                                    overflow-hidden
+                                    bg-gray-100
+                                "
+                            >
+                                <img
+                                    src={
+                                        image.image_url
+                                    }
+                                    alt={`게시글 사진 ${
+                                        index +
+                                        1
+                                    }`}
+                                    draggable={
+                                        false
+                                    }
+                                    className="
+                                        h-full
+                                        w-full
+                                        select-none
+                                        object-cover
+                                    "
+                                />
+                            </div>
+                        )
+                    )}
+                </div>
+
+                {/* ========================================
+                    사진 번호
+                ======================================== */}
+
                 {images.length > 1 && (
-                    <div className="absolute right-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
-                        {safeIndex + 1} /{" "}
+                    <div
+                        className="
+                            pointer-events-none
+                            absolute
+                            right-3
+                            top-3
+                            z-20
+                            rounded-full
+                            bg-black/55
+                            px-2.5
+                            py-1.5
+                            text-[10px]
+                            font-bold
+                            leading-none
+                            text-white
+                            shadow-sm
+                            backdrop-blur-md
+                        "
+                    >
+                        {currentIndex + 1}
+
+                        <span className="mx-1 opacity-60">
+                            /
+                        </span>
+
                         {images.length}
                     </div>
                 )}
 
-                {/* 이전 */}
-                {safeIndex > 0 && (
-                    <button
-                        type="button"
-                        onClick={
-                            goPrevious
-                        }
-                        aria-label="이전 사진"
-                        className="absolute left-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
-                    >
-                        <ChevronLeftIcon />
-                    </button>
-                )}
+                {/* ========================================
+                    PC 이전 버튼
+                ======================================== */}
 
-                {/* 다음 */}
-                {safeIndex <
+                {images.length > 1 &&
+                    currentIndex > 0 && (
+                        <button
+                            type="button"
+                            onClick={
+                                goPrevious
+                            }
+                            aria-label="이전 사진"
+                            className="
+                                absolute
+                                left-3
+                                top-1/2
+                                z-20
+                                hidden
+                                h-10
+                                w-10
+                                -translate-y-1/2
+                                items-center
+                                justify-center
+                                rounded-full
+                                bg-black/45
+                                text-white
+                                opacity-0
+                                shadow-md
+                                backdrop-blur-md
+                                transition-all
+                                duration-200
+                                hover:bg-black/60
+                                group-hover:opacity-100
+                                sm:flex
+                            "
+                        >
+                            <ChevronLeftIcon />
+                        </button>
+                    )}
+
+                {/* ========================================
+                    PC 다음 버튼
+                ======================================== */}
+
+                {images.length > 1 &&
+                    currentIndex <
                     images.length - 1 && (
                         <button
                             type="button"
@@ -158,16 +290,49 @@ export function PostImageSlider({
                                 goNext
                             }
                             aria-label="다음 사진"
-                            className="absolute right-3 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
+                            className="
+                                absolute
+                                right-3
+                                top-1/2
+                                z-20
+                                hidden
+                                h-10
+                                w-10
+                                -translate-y-1/2
+                                items-center
+                                justify-center
+                                rounded-full
+                                bg-black/45
+                                text-white
+                                opacity-0
+                                shadow-md
+                                backdrop-blur-md
+                                transition-all
+                                duration-200
+                                hover:bg-black/60
+                                group-hover:opacity-100
+                                sm:flex
+                            "
                         >
                             <ChevronRightIcon />
                         </button>
                     )}
             </div>
 
-            {/* 페이지 점 */}
+            {/* ========================================
+                페이지 표시 점
+            ======================================== */}
+
             {images.length > 1 && (
-                <div className="mt-2.5 flex justify-center gap-1.5">
+                <div
+                    className="
+                        flex
+                        h-7
+                        items-center
+                        justify-center
+                        gap-1.5
+                    "
+                >
                     {images.map(
                         (
                             image,
@@ -179,18 +344,18 @@ export function PostImageSlider({
                                 }
                                 type="button"
                                 onClick={() =>
-                                    setCurrentIndex(
+                                    goToImage(
                                         index
                                     )
                                 }
                                 aria-label={`사진 ${
                                     index + 1
                                 }번 보기`}
-                                className={`h-1.5 rounded-full transition-all ${
+                                className={`rounded-full transition-all duration-200 ${
                                     index ===
-                                    safeIndex
-                                        ? "w-4 bg-gray-800"
-                                        : "w-1.5 bg-gray-300"
+                                    currentIndex
+                                        ? "h-1.5 w-4 bg-gray-800"
+                                        : "h-1.5 w-1.5 bg-gray-300"
                                 }`}
                             />
                         )
@@ -204,8 +369,8 @@ export function PostImageSlider({
 function ChevronLeftIcon() {
     return (
         <svg
-            width="18"
-            height="18"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             aria-hidden="true"
@@ -224,8 +389,8 @@ function ChevronLeftIcon() {
 function ChevronRightIcon() {
     return (
         <svg
-            width="18"
-            height="18"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             aria-hidden="true"

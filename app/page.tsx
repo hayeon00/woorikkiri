@@ -990,13 +990,11 @@ async function Feed({
                                         ) => (
                                             <article
                                                 id={`post-${post.id}`}
-                                                key={
-                                                    post.id
-                                                }
-                                                className="scroll-mt-24 overflow-hidden rounded-[24px] border border-black/[0.04] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.025)]"
+                                                key={post.id}
+                                                className="scroll-mt-24 overflow-hidden rounded-[22px] border border-black/[0.04] bg-white shadow-[0_6px_24px_rgba(0,0,0,0.025)]"
                                             >
                                                 {/* 작성자 */}
-                                                <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
+                                                <div className="flex items-center justify-between gap-3 px-4 pb-2.5 pt-4 sm:px-5 sm:pt-5">
 
                                                     <div className="flex min-w-0 items-center gap-3">
 
@@ -1060,7 +1058,7 @@ async function Feed({
 
                                                 {/* 글 */}
                                                 {post.content && (
-                                                    <p className="whitespace-pre-wrap break-words px-4 pb-4 text-[14px] leading-[1.75] text-gray-900 sm:px-5 sm:text-[15px]">
+                                                    <p className="whitespace-pre-wrap break-words px-4 pb-3 text-[14px] leading-[1.65] text-gray-900 sm:px-5 sm:pb-4 sm:text-[15px]">
                                                         {
                                                             post.content
                                                         }
@@ -1077,7 +1075,7 @@ async function Feed({
                                                 )}
 
                                                 {/* 반응 / 댓글 */}
-                                                <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+                                                <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">
 
                                                     <div className="flex items-center gap-5">
 
