@@ -1,9 +1,9 @@
 "use client";
 
 import {
-    useOptimistic,
+    useEffect,
+    useRef,
     useState,
-    useTransition,
 } from "react";
 
 type LikeButtonProps = {
@@ -15,71 +15,108 @@ type LikeButtonProps = {
     ) => Promise<void>;
 };
 
-type LikeState = {
-    liked: boolean;
-    count: number;
-};
-
 export function LikeButton({
                                postId,
                                initialLiked,
                                initialCount,
                                toggleAction,
                            }: LikeButtonProps) {
-    const [serverState, setServerState] =
-        useState<LikeState>({
-            liked: initialLiked,
-            count: initialCount,
-        });
+    const [liked, setLiked] =
+        useState(initialLiked);
 
-    const [optimisticState, setOptimisticState] =
-        useOptimistic(
-            serverState,
-            (
-                current: LikeState,
-                nextLiked: boolean
-            ) => ({
-                liked: nextLiked,
-                count: Math.max(
-                    0,
-                    current.count +
-                    (nextLiked ? 1 : -1)
-                ),
-            })
-        );
+    const [count, setCount] =
+        useState(initialCount);
 
-    const [isPending, startTransition] =
-        useTransition();
+    const likedRef =
+        useRef(initialLiked);
 
-    function handleClick() {
-        if (isPending) {
+    const pendingClicksRef =
+        useRef(0);
+
+    const processingRef =
+        useRef(false);
+
+    useEffect(() => {
+        // 서버 요청 처리 중에는
+        // Realtime refresh가 로컬 UI를 덮어쓰지 않게 함
+        if (
+            processingRef.current ||
+            pendingClicksRef.current > 0
+        ) {
             return;
         }
 
-        const nextLiked =
-            !optimisticState.liked;
+        likedRef.current =
+            initialLiked;
 
-        startTransition(async () => {
-            setOptimisticState(nextLiked);
+        setLiked(
+            initialLiked
+        );
+
+        setCount(
+            initialCount
+        );
+    }, [
+        initialLiked,
+        initialCount,
+    ]);
+
+    async function processQueue() {
+        if (processingRef.current) {
+            return;
+        }
+
+        processingRef.current =
+            true;
+
+        while (
+            pendingClicksRef.current > 0
+            ) {
+            pendingClicksRef.current -= 1;
 
             try {
-                await toggleAction(postId);
-
-                setServerState({
-                    liked: nextLiked,
-                    count: Math.max(
-                        0,
-                        serverState.count +
-                        (nextLiked ? 1 : -1)
-                    ),
-                });
+                await toggleAction(
+                    postId
+                );
             } catch (error) {
                 console.error(
                     "좋아요 처리 실패:",
                     error
                 );
             }
-        });
+        }
+
+        processingRef.current =
+            false;
+    }
+
+    function handleClick() {
+        const nextLiked =
+            !likedRef.current;
+
+        likedRef.current =
+            nextLiked;
+
+        setLiked(
+            nextLiked
+        );
+
+        setCount(
+            (current) =>
+                Math.max(
+                    0,
+                    current +
+                    (nextLiked
+                        ? 1
+                        : -1)
+                )
+        );
+
+        // 클릭한 횟수만 기록하고
+        // 서버 요청은 순서대로 처리
+        pendingClicksRef.current += 1;
+
+        void processQueue();
     }
 
     return (
@@ -87,27 +124,23 @@ export function LikeButton({
             type="button"
             onClick={handleClick}
             aria-label={
-                optimisticState.liked
+                liked
                     ? "좋아요 취소"
                     : "좋아요"
             }
-            aria-pressed={
-                optimisticState.liked
-            }
+            aria-pressed={liked}
             className={
-                optimisticState.liked
+                liked
                     ? "flex items-center gap-1.5 text-red-500 transition active:scale-90"
                     : "flex items-center gap-1.5 text-gray-700 transition hover:text-black active:scale-90"
             }
         >
             <HeartIcon
-                filled={
-                    optimisticState.liked
-                }
+                filled={liked}
             />
 
             <span className="text-[11px] font-black tabular-nums">
-                {optimisticState.count}
+                {count}
             </span>
         </button>
     );
