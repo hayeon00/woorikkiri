@@ -61,6 +61,16 @@ export function FeedRealtime({
                 `feed-realtime-${groupId}`
             )
             .on(
+                "system",
+                "*",
+                (payload) => {
+                    console.log(
+                        "[Realtime] SYSTEM:",
+                        payload
+                    );
+                }
+            )
+            .on(
                 "postgres_changes",
                 {
                     event: "*",
@@ -76,10 +86,11 @@ export function FeedRealtime({
                     router.refresh();
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status, error) => {
                 console.log(
                     "[Realtime] 상태:",
-                    status
+                    status,
+                    error
                 );
             });
 
