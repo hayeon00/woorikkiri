@@ -17,38 +17,48 @@ export function FeedRealtime({
     useEffect(() => {
         const supabase = createClient();
 
-        let channel: ReturnType<typeof supabase.channel> | null = null;
+        let channel: ReturnType<
+            typeof supabase.channel
+        > | null = null;
+
+        let refreshTimer:
+            | ReturnType<typeof setTimeout>
+            | null = null;
+
+        const refreshFeed = () => {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+            }
+
+            refreshTimer = setTimeout(() => {
+                router.refresh();
+            }, 150);
+        };
 
         async function startRealtime() {
             const {
                 data: { session },
-                error: sessionError,
+                error,
             } = await supabase.auth.getSession();
 
-            console.log(
-                "[Realtime] 세션:",
-                !!session,
-                sessionError
-            );
-
-            if (!session?.access_token) {
-                console.log("[Realtime] access token 없음");
+            if (error || !session?.access_token) {
+                console.error(
+                    "[Realtime] 세션을 가져오지 못했습니다.",
+                    error
+                );
                 return;
             }
 
-            await supabase.realtime.setAuth(session.access_token);
-
-            console.log("[Realtime] 인증 토큰 적용 완료");
+            await supabase.realtime.setAuth(
+                session.access_token
+            );
 
             channel = supabase
-                .channel(`feed-realtime-${groupId}`)
-                .on(
-                    "system",
-                    "*",
-                    (payload) => {
-                        console.log("[Realtime] SYSTEM:", payload);
-                    }
+                .channel(
+                    `feed-realtime-${groupId}`
                 )
+
+                // 게시글
                 .on(
                     "postgres_changes",
                     {
@@ -56,27 +66,61 @@ export function FeedRealtime({
                         schema: "public",
                         table: "posts",
                     },
-                    (payload) => {
-                        console.log(
-                            "[Realtime] 게시글 변경 감지",
-                            payload
-                        );
-
-                        router.refresh();
-                    }
+                    refreshFeed
                 )
-                .subscribe((status, error) => {
-                    console.log(
-                        "[Realtime] 상태:",
-                        status,
-                        error
-                    );
+
+                // 댓글
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "comments",
+                    },
+                    refreshFeed
+                )
+
+                // 좋아요
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "likes",
+                    },
+                    refreshFeed
+                )
+
+                // 알림
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "notifications",
+                    },
+                    refreshFeed
+                )
+
+                .subscribe((status) => {
+                    if (
+                        status ===
+                        "CHANNEL_ERROR"
+                    ) {
+                        console.error(
+                            "[Realtime] 채널 연결 오류"
+                        );
+                    }
                 });
         }
 
         startRealtime();
 
         return () => {
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+            }
+
             if (channel) {
                 supabase.removeChannel(channel);
             }
