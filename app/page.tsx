@@ -7,6 +7,7 @@ import { CreatePostForm } from "@/components/create-post-form";
 import { PostMenu } from "@/components/post-menu";
 import { CommentForm } from "@/components/comment-form";
 import { CommentList } from "@/components/comment-list";
+import { PostImageSlider } from "@/components/post-image-slider";
 
 import {
     toggleLike,
@@ -1068,45 +1069,11 @@ async function Feed({
 
                                                 {/* 사진 */}
                                                 {post.image_urls?.length > 0 && (
-                                                    <div
-                                                        className={`grid gap-1.5 px-2 sm:px-3 ${
-                                                            post.image_urls.length === 1
-                                                                ? "grid-cols-1"
-                                                                : "grid-cols-2"
-                                                        }`}
-                                                    >
-                                                        {post.image_urls.map(
-                                                            (
-                                                                image: any,
-                                                                index: number
-                                                            ) => (
-                                                                <div
-                                                                    key={image.id}
-                                                                    className={
-                                                                        post.image_urls
-                                                                            .length === 1
-                                                                            ? "overflow-hidden rounded-[20px] bg-gray-100"
-                                                                            : "overflow-hidden rounded-[16px] bg-gray-100"
-                                                                    }
-                                                                >
-                                                                    <img
-                                                                        src={
-                                                                            image.image_url
-                                                                        }
-                                                                        alt={`게시글 사진 ${
-                                                                            index + 1
-                                                                        }`}
-                                                                        className={
-                                                                            post.image_urls
-                                                                                .length === 1
-                                                                                ? "max-h-[480px] w-full object-cover sm:max-h-[560px] xl:max-h-[600px]"
-                                                                                : "aspect-square w-full object-cover"
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                            )
-                                                        )}
-                                                    </div>
+                                                    <PostImageSlider
+                                                        images={
+                                                            post.image_urls
+                                                        }
+                                                    />
                                                 )}
 
                                                 {/* 반응 / 댓글 */}

@@ -20,19 +20,55 @@ export function CreatePostForm({
                                    nickname,
                                    avatarUrl,
                                }: CreatePostFormProps) {
-    const [content, setContent] = useState("");
-    const [images, setImages] = useState<File[]>([]);
-    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
+    const [content, setContent] =
+        useState("");
 
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [images, setImages] =
+        useState<File[]>([]);
+
+    const [
+        previewUrls,
+        setPreviewUrls,
+    ] = useState<string[]>([]);
+
+    const [
+        currentPreviewIndex,
+        setCurrentPreviewIndex,
+    ] = useState(0);
+
+    const [isExpanded, setIsExpanded] =
+        useState(false);
+
+    const [
+        isSubmitting,
+        setIsSubmitting,
+    ] = useState(false);
+
+    const [
+        errorMessage,
+        setErrorMessage,
+    ] = useState("");
+
+    const fileInputRef =
+        useRef<HTMLInputElement>(null);
+
+    const textareaRef =
+        useRef<HTMLTextAreaElement>(null);
+
+    const touchStartX =
+        useRef<number | null>(null);
+
+    const touchEndX =
+        useRef<number | null>(null);
+
+    // ========================================
+    // 사진 미리보기 URL
+    // ========================================
 
     useEffect(() => {
-        const objectUrls = images.map((image) =>
-            URL.createObjectURL(image)
+        const objectUrls = images.map(
+            (image) =>
+                URL.createObjectURL(image)
         );
 
         setPreviewUrls(objectUrls);
@@ -44,19 +80,117 @@ export function CreatePostForm({
         };
     }, [images]);
 
+    // ========================================
+    // 작성창 열릴 때 포커스
+    // ========================================
+
     useEffect(() => {
         if (!isExpanded) {
             return;
         }
 
-        const timer = window.setTimeout(() => {
-            textareaRef.current?.focus();
-        }, 100);
+        const timer =
+            window.setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 100);
 
         return () => {
             window.clearTimeout(timer);
         };
     }, [isExpanded]);
+
+    // ========================================
+    // 현재 사진 인덱스 보정
+    // ========================================
+
+    useEffect(() => {
+        if (images.length === 0) {
+            setCurrentPreviewIndex(0);
+            return;
+        }
+
+        setCurrentPreviewIndex(
+            (current) =>
+                Math.min(
+                    current,
+                    images.length - 1
+                )
+        );
+    }, [images.length]);
+
+    function goPreviousPreview() {
+        setCurrentPreviewIndex(
+            (current) =>
+                Math.max(
+                    0,
+                    current - 1
+                )
+        );
+    }
+
+    function goNextPreview() {
+        setCurrentPreviewIndex(
+            (current) =>
+                Math.min(
+                    images.length - 1,
+                    current + 1
+                )
+        );
+    }
+
+    function handleTouchStart(
+        event: React.TouchEvent<HTMLDivElement>
+    ) {
+        touchEndX.current = null;
+
+        touchStartX.current =
+            event.targetTouches[0]
+                ?.clientX ?? null;
+    }
+
+    function handleTouchMove(
+        event: React.TouchEvent<HTMLDivElement>
+    ) {
+        touchEndX.current =
+            event.targetTouches[0]
+                ?.clientX ?? null;
+    }
+
+    function handleTouchEnd() {
+        if (
+            touchStartX.current === null ||
+            touchEndX.current === null
+        ) {
+            return;
+        }
+
+        const distance =
+            touchStartX.current -
+            touchEndX.current;
+
+        const minimumSwipeDistance = 45;
+
+        if (
+            distance >
+            minimumSwipeDistance
+        ) {
+            goNextPreview();
+        }
+
+        if (
+            distance <
+            -minimumSwipeDistance
+        ) {
+            goPreviousPreview();
+        }
+
+        touchStartX.current = null;
+        touchEndX.current = null;
+    }
+
+    // ========================================
+    // 사진 삭제
+    // ========================================
 
     function removeImage(index: number) {
         setImages((current) =>
@@ -66,10 +200,25 @@ export function CreatePostForm({
             )
         );
 
+        setCurrentPreviewIndex(
+            (current) =>
+                Math.max(
+                    0,
+                    Math.min(
+                        current,
+                        images.length - 2
+                    )
+                )
+        );
+
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
     }
+
+    // ========================================
+    // 작성창 닫기
+    // ========================================
 
     function closeComposer() {
         if (isSubmitting) {
@@ -78,6 +227,7 @@ export function CreatePostForm({
 
         setContent("");
         setImages([]);
+        setCurrentPreviewIndex(0);
         setErrorMessage("");
         setIsExpanded(false);
 
@@ -86,9 +236,14 @@ export function CreatePostForm({
         }
 
         if (textareaRef.current) {
-            textareaRef.current.style.height = "auto";
+            textareaRef.current.style.height =
+                "auto";
         }
     }
+
+    // ========================================
+    // 게시글 등록
+    // ========================================
 
     async function handleSubmit(
         event: React.FormEvent<HTMLFormElement>
@@ -99,7 +254,8 @@ export function CreatePostForm({
             return;
         }
 
-        const trimmedContent = content.trim();
+        const trimmedContent =
+            content.trim();
 
         if (
             !trimmedContent &&
@@ -151,10 +307,11 @@ export function CreatePostForm({
         setIsSubmitting(true);
         setErrorMessage("");
 
-        const supabase = createClient();
+        const supabase =
+            createClient();
 
-        const uploadedImagePaths: string[] =
-            [];
+        const uploadedImagePaths:
+            string[] = [];
 
         try {
             const {
@@ -169,6 +326,7 @@ export function CreatePostForm({
                 );
             }
 
+            // 사진 직접 Storage 업로드
             for (const image of images) {
                 const extension =
                     image.name
@@ -180,9 +338,14 @@ export function CreatePostForm({
                 const imagePath =
                     `${user.id}/${crypto.randomUUID()}.${extension}`;
 
-                const { error: uploadError } =
+                const {
+                    error:
+                        uploadError,
+                } =
                     await supabase.storage
-                        .from("post-images")
+                        .from(
+                            "post-images"
+                        )
                         .upload(
                             imagePath,
                             image,
@@ -204,7 +367,8 @@ export function CreatePostForm({
                 );
             }
 
-            const formData = new FormData();
+            const formData =
+                new FormData();
 
             formData.set(
                 "group_id",
@@ -229,6 +393,7 @@ export function CreatePostForm({
 
             setContent("");
             setImages([]);
+            setCurrentPreviewIndex(0);
             setIsExpanded(false);
 
             if (fileInputRef.current) {
@@ -241,8 +406,11 @@ export function CreatePostForm({
                     "auto";
             }
         } catch (error) {
+            // 게시글 등록 실패 시
+            // 이미 올라간 Storage 사진 정리
             if (
-                uploadedImagePaths.length > 0
+                uploadedImagePaths.length >
+                0
             ) {
                 await supabase.storage
                     .from("post-images")
@@ -260,6 +428,10 @@ export function CreatePostForm({
             setIsSubmitting(false);
         }
     }
+
+    // ========================================
+    // 접힌 작성 버튼
+    // ========================================
 
     if (!isExpanded) {
         return (
@@ -283,7 +455,8 @@ export function CreatePostForm({
                 )}
 
                 <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-gray-400">
-                    {nickname}님, 오늘은 어땠나요?
+                    {nickname}님, 오늘은
+                    어땠나요?
                 </span>
 
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
@@ -292,6 +465,24 @@ export function CreatePostForm({
             </button>
         );
     }
+
+    const safePreviewIndex =
+        Math.min(
+            currentPreviewIndex,
+            Math.max(
+                0,
+                previewUrls.length - 1
+            )
+        );
+
+    const currentPreviewUrl =
+        previewUrls[
+            safePreviewIndex
+            ];
+
+    // ========================================
+    // 작성창
+    // ========================================
 
     return (
         <form
@@ -302,8 +493,12 @@ export function CreatePostForm({
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                 <button
                     type="button"
-                    onClick={closeComposer}
-                    disabled={isSubmitting}
+                    onClick={
+                        closeComposer
+                    }
+                    disabled={
+                        isSubmitting
+                    }
                     className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
                     aria-label="작성 취소"
                 >
@@ -321,7 +516,9 @@ export function CreatePostForm({
                 <div className="flex items-start gap-3">
                     {avatarUrl ? (
                         <img
-                            src={avatarUrl}
+                            src={
+                                avatarUrl
+                            }
                             alt="내 프로필"
                             className="h-10 w-10 shrink-0 rounded-full object-cover"
                         />
@@ -337,13 +534,18 @@ export function CreatePostForm({
                         </p>
 
                         <textarea
-                            ref={textareaRef}
-                            value={content}
+                            ref={
+                                textareaRef
+                            }
+                            value={
+                                content
+                            }
                             onChange={(
                                 event
                             ) => {
                                 setContent(
-                                    event.target
+                                    event
+                                        .target
                                         .value
                                 );
 
@@ -352,7 +554,8 @@ export function CreatePostForm({
 
                                 event.target.style.height =
                                     `${Math.min(
-                                        event.target
+                                        event
+                                            .target
                                             .scrollHeight,
                                         220
                                     )}px`;
@@ -366,9 +569,13 @@ export function CreatePostForm({
                                 }
                             }}
                             placeholder="우리에게 무슨 일이 있었나요?"
-                            maxLength={500}
+                            maxLength={
+                                500
+                            }
                             rows={3}
-                            disabled={isSubmitting}
+                            disabled={
+                                isSubmitting
+                            }
                             className="max-h-[220px] min-h-[92px] w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none placeholder:text-gray-300 disabled:opacity-60"
                         />
 
@@ -384,68 +591,151 @@ export function CreatePostForm({
                     </div>
                 </div>
 
-                {/* 사진 미리보기 */}
-                {/* 사진 미리보기 */}
-                {previewUrls.length > 0 && (
-                    <div
-                        className={`mt-4 grid gap-2 ${
-                            previewUrls.length === 1
-                                ? "grid-cols-1"
-                                : "grid-cols-2"
-                        }`}
-                    >
-                        {previewUrls.map(
-                            (previewUrl, index) => (
-                                <div
-                                    key={previewUrl}
-                                    className="relative overflow-hidden rounded-[18px] bg-gray-100"
-                                >
-                                    <img
-                                        src={previewUrl}
-                                        alt={`선택한 사진 ${
-                                            index + 1
-                                        }`}
-                                        className={
-                                            previewUrls.length ===
-                                            1
-                                                ? "max-h-[440px] w-full object-cover"
-                                                : "aspect-square w-full object-cover"
-                                        }
-                                    />
+                {/* ========================================
+                    사진 미리보기
+                ======================================== */}
 
+                {currentPreviewUrl && (
+                    <div className="mt-4">
+                        <div
+                            className="relative aspect-square w-full overflow-hidden rounded-[20px] bg-gray-100"
+                            onTouchStart={
+                                handleTouchStart
+                            }
+                            onTouchMove={
+                                handleTouchMove
+                            }
+                            onTouchEnd={
+                                handleTouchEnd
+                            }
+                        >
+                            <img
+                                src={
+                                    currentPreviewUrl
+                                }
+                                alt={`선택한 사진 ${
+                                    safePreviewIndex +
+                                    1
+                                }`}
+                                draggable={
+                                    false
+                                }
+                                className="absolute inset-0 h-full w-full select-none object-cover"
+                            />
+
+                            {/* 사진 번호 */}
+                            {previewUrls.length >
+                                1 && (
+                                    <div className="absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
+                                        {safePreviewIndex +
+                                            1}{" "}
+                                        /{" "}
+                                        {
+                                            previewUrls.length
+                                        }
+                                    </div>
+                                )}
+
+                            {/* 삭제 */}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    removeImage(
+                                        safePreviewIndex
+                                    )
+                                }
+                                disabled={
+                                    isSubmitting
+                                }
+                                aria-label="현재 사진 제거"
+                                className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 active:scale-95 disabled:opacity-50"
+                            >
+                                <CloseIcon />
+                            </button>
+
+                            {/* 이전 */}
+                            {safePreviewIndex >
+                                0 && (
                                     <button
                                         type="button"
-                                        onClick={() =>
-                                            removeImage(
-                                                index
-                                            )
+                                        onClick={
+                                            goPreviousPreview
                                         }
-                                        disabled={
-                                            isSubmitting
-                                        }
-                                        aria-label={`${
-                                            index + 1
-                                        }번째 사진 제거`}
-                                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 disabled:opacity-50"
+                                        aria-label="이전 사진"
+                                        className="absolute left-3 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
                                     >
-                                        <CloseIcon />
+                                        <ChevronLeftIcon />
                                     </button>
+                                )}
+
+                            {/* 다음 */}
+                            {safePreviewIndex <
+                                previewUrls.length -
+                                1 && (
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            goNextPreview
+                                        }
+                                        aria-label="다음 사진"
+                                        className="absolute right-3 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-sm backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
+                                    >
+                                        <ChevronRightIcon />
+                                    </button>
+                                )}
+                        </div>
+
+                        {/* 페이지 점 */}
+                        {previewUrls.length >
+                            1 && (
+                                <div className="mt-2.5 flex justify-center gap-1.5">
+                                    {previewUrls.map(
+                                        (
+                                            previewUrl,
+                                            index
+                                        ) => (
+                                            <button
+                                                key={
+                                                    previewUrl
+                                                }
+                                                type="button"
+                                                onClick={() =>
+                                                    setCurrentPreviewIndex(
+                                                        index
+                                                    )
+                                                }
+                                                aria-label={`${
+                                                    index +
+                                                    1
+                                                }번째 사진 보기`}
+                                                className={`h-1.5 rounded-full transition-all ${
+                                                    index ===
+                                                    safePreviewIndex
+                                                        ? "w-4 bg-gray-800"
+                                                        : "w-1.5 bg-gray-300"
+                                                }`}
+                                            />
+                                        )
+                                    )}
                                 </div>
-                            )
-                        )}
+                            )}
                     </div>
                 )}
 
                 {errorMessage && (
                     <div className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-500">
-                        {errorMessage}
+                        {
+                            errorMessage
+                        }
                     </div>
                 )}
             </div>
 
-            {/* 작성창 하단 */}
-            <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2.5 sm:px-4">
+            {/* ========================================
+                작성창 하단
+            ======================================== */}
 
+            <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2.5 sm:px-4">
                 <label
                     className={
                         isSubmitting
@@ -456,29 +746,39 @@ export function CreatePostForm({
                     <ImageIcon />
 
                     <span>
-    {images.length > 0
-        ? `사진 추가 (${images.length}/5)`
-        : "사진 추가"}
-</span>
+                        {images.length >
+                        0
+                            ? `사진 추가 (${images.length}/5)`
+                            : "사진 추가"}
+                    </span>
 
                     <input
-                        ref={fileInputRef}
+                        ref={
+                            fileInputRef
+                        }
                         type="file"
                         accept="image/*"
                         multiple
                         disabled={
                             isSubmitting ||
-                            images.length >= 5
+                            images.length >=
+                            5
                         }
                         className="hidden"
-                        onChange={(event) => {
+                        onChange={(
+                            event
+                        ) => {
                             const selectedFiles =
                                 Array.from(
-                                    event.target.files ?? []
+                                    event
+                                        .target
+                                        .files ??
+                                    []
                                 );
 
                             if (
-                                selectedFiles.length === 0
+                                selectedFiles.length ===
+                                0
                             ) {
                                 return;
                             }
@@ -492,51 +792,71 @@ export function CreatePostForm({
                                     "사진은 최대 5장까지 추가할 수 있습니다."
                                 );
 
-                                event.target.value = "";
+                                event.target.value =
+                                    "";
                                 return;
                             }
 
                             const invalidFile =
                                 selectedFiles.find(
-                                    (file) =>
+                                    (
+                                        file
+                                    ) =>
                                         !file.type.startsWith(
                                             "image/"
                                         )
                                 );
 
-                            if (invalidFile) {
+                            if (
+                                invalidFile
+                            ) {
                                 setErrorMessage(
                                     "이미지 파일만 선택해주세요."
                                 );
 
-                                event.target.value = "";
+                                event.target.value =
+                                    "";
                                 return;
                             }
 
                             const oversizedFile =
                                 selectedFiles.find(
-                                    (file) =>
+                                    (
+                                        file
+                                    ) =>
                                         file.size >
-                                        5 * 1024 * 1024
+                                        5 *
+                                        1024 *
+                                        1024
                                 );
 
-                            if (oversizedFile) {
+                            if (
+                                oversizedFile
+                            ) {
                                 setErrorMessage(
                                     "사진 한 장당 5MB 이하만 업로드할 수 있습니다."
                                 );
 
-                                event.target.value = "";
+                                event.target.value =
+                                    "";
                                 return;
                             }
 
-                            setImages((current) => [
-                                ...current,
-                                ...selectedFiles,
-                            ]);
+                            setImages(
+                                (
+                                    current
+                                ) => [
+                                    ...current,
+                                    ...selectedFiles,
+                                ]
+                            );
 
-                            setErrorMessage("");
+                            setErrorMessage(
+                                ""
+                            );
 
-                            event.target.value = "";
+                            event.target.value =
+                                "";
                         }}
                     />
                 </label>
@@ -546,7 +866,8 @@ export function CreatePostForm({
                     disabled={
                         isSubmitting ||
                         (!content.trim() &&
-                            images.length === 0)
+                            images.length ===
+                            0)
                     }
                     className="flex h-10 min-w-[82px] items-center justify-center rounded-full bg-gray-950 px-5 text-[13px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                 >
@@ -563,6 +884,10 @@ export function CreatePostForm({
         </form>
     );
 }
+
+// ========================================
+// 아이콘
+// ========================================
 
 function UserIcon() {
     return (
@@ -643,6 +968,46 @@ function CloseIcon() {
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
+function ChevronLeftIcon() {
+    return (
+        <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="m15 18-6-6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function ChevronRightIcon() {
+    return (
+        <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="m9 18 6-6-6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
             />
         </svg>
     );
