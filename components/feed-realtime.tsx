@@ -18,6 +18,39 @@ export function FeedRealtime({
         const supabase =
             createClient();
 
+        async function testAccess() {
+            const {
+                data: userData,
+                error: userError,
+            } = await supabase.auth.getUser();
+
+            console.log(
+                "[Realtime] 현재 사용자:",
+                userData.user?.id,
+                userError
+            );
+
+            const {
+                data,
+                error,
+            } = await supabase
+                .from("posts")
+                .select("id, group_id, content")
+                .eq("group_id", groupId)
+                .order("created_at", {
+                    ascending: false,
+                })
+                .limit(3);
+
+            console.log(
+                "[Realtime] SELECT 테스트:",
+                data,
+                error
+            );
+        }
+
+        testAccess();
+
         console.log(
             "[Realtime] 시작",
             groupId
