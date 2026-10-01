@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+
 export async function createPost(formData: FormData) {
     const supabase = await createClient();
 
@@ -12,19 +13,21 @@ export async function createPost(formData: FormData) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(
+            "로그인이 필요합니다."
+        );
     }
 
     const content = String(
         formData.get("content") ?? ""
     ).trim();
 
-    const imagePathValue = String(
-        formData.get("image_path") ?? ""
-    ).trim();
-
-    const imagePath =
-        imagePathValue || null;
+    const imagePaths = formData
+        .getAll("image_paths")
+        .map((value) =>
+            String(value).trim()
+        )
+        .filter(Boolean);
 
     const groupId = Number(
         formData.get("group_id")
@@ -64,7 +67,10 @@ export async function createPost(formData: FormData) {
     }
 
     // 글 또는 사진이 하나는 있어야 함
-    if (!content && !imagePath) {
+    if (
+        !content &&
+        imagePaths.length === 0
+    ) {
         throw new Error(
             "글이나 사진을 추가해주세요."
         );
@@ -76,31 +82,110 @@ export async function createPost(formData: FormData) {
         );
     }
 
+    // 서버에서도 최대 5장 제한
+    if (imagePaths.length > 5) {
+        throw new Error(
+            "사진은 최대 5장까지 추가할 수 있습니다."
+        );
+    }
+
     // 다른 사용자의 Storage 경로를
-    // 임의로 저장하지 못하도록 검사
-    if (
-        imagePath &&
-        !imagePath.startsWith(
-            `${user.id}/`
-        )
-    ) {
+    // 임의로 저장하지 못하도록 전부 검사
+    const hasInvalidImagePath =
+        imagePaths.some(
+            (imagePath) =>
+                !imagePath.startsWith(
+                    `${user.id}/`
+                )
+        );
+
+    if (hasInvalidImagePath) {
         throw new Error(
             "잘못된 사진 경로입니다."
         );
     }
 
-    // 게시글 저장
-    const { error } = await supabase
+    // ========================================
+    // 게시글 먼저 생성
+    //
+    // 기존 image_path에는 첫 번째 사진을
+    // 당분간 호환용으로 함께 저장한다.
+    // ========================================
+
+    const {
+        data: post,
+        error: postError,
+    } = await supabase
         .from("posts")
         .insert({
             user_id: user.id,
             group_id: groupId,
             content,
-            image_path: imagePath,
-        });
+            image_path:
+                imagePaths[0] ?? null,
+        })
+        .select("id")
+        .single();
 
-    if (error) {
-        throw new Error(error.message);
+    if (postError) {
+        throw new Error(
+            postError.message
+        );
+    }
+
+    // ========================================
+    // 여러 장 사진 정보를 post_images에 저장
+    // ========================================
+
+    if (imagePaths.length > 0) {
+        const imageRows =
+            imagePaths.map(
+                (
+                    imagePath,
+                    index
+                ) => ({
+                    post_id: post.id,
+                    image_path:
+                    imagePath,
+                    sort_order:
+                    index,
+                })
+            );
+
+        const {
+            error: imagesError,
+        } = await supabase
+            .from("post_images")
+            .insert(imageRows);
+
+        if (imagesError) {
+            // post_images 저장 실패 시
+            // 방금 만든 게시글도 제거한다.
+            const {
+                error: rollbackError,
+            } = await supabase
+                .from("posts")
+                .delete()
+                .eq(
+                    "id",
+                    post.id
+                )
+                .eq(
+                    "user_id",
+                    user.id
+                );
+
+            if (rollbackError) {
+                console.error(
+                    "게시글 롤백 실패:",
+                    rollbackError
+                );
+            }
+
+            throw new Error(
+                imagesError.message
+            );
+        }
     }
 
     revalidatePath("/");
@@ -393,11 +478,28 @@ export async function deletePost(postId: number) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(
+            "로그인이 필요합니다."
+        );
     }
 
-    // 내가 작성한 게시글인지 확인 + 사진 경로 가져오기
-    const { data: post, error: findError } = await supabase
+    if (
+        !Number.isInteger(postId) ||
+        postId <= 0
+    ) {
+        throw new Error(
+            "잘못된 게시글입니다."
+        );
+    }
+
+    // ========================================
+    // 내가 작성한 게시글인지 확인
+    // ========================================
+
+    const {
+        data: post,
+        error: findError,
+    } = await supabase
         .from("posts")
         .select("id, user_id, image_path")
         .eq("id", postId)
@@ -405,37 +507,96 @@ export async function deletePost(postId: number) {
         .maybeSingle();
 
     if (findError) {
-        throw new Error(findError.message);
+        throw new Error(
+            findError.message
+        );
     }
 
     if (!post) {
-        throw new Error("삭제할 수 없는 게시글입니다.");
+        throw new Error(
+            "삭제할 수 없는 게시글입니다."
+        );
     }
 
-    // 게시글 삭제
-    const { error: deleteError } = await supabase
+    // ========================================
+    // 이 게시글의 모든 사진 경로 조회
+    // ========================================
+
+    const {
+        data: postImages,
+        error: imagesError,
+    } = await supabase
+        .from("post_images")
+        .select("image_path")
+        .eq("post_id", postId);
+
+    if (imagesError) {
+        throw new Error(
+            imagesError.message
+        );
+    }
+
+    const imagePaths = Array.from(
+        new Set(
+            [
+                ...(postImages ?? []).map(
+                    (image) =>
+                        image.image_path
+                ),
+
+                // 이전 구조의 게시물을 위한
+                // 임시 호환 처리
+                post.image_path,
+            ].filter(
+                (
+                    path
+                ): path is string =>
+                    Boolean(path)
+            )
+        )
+    );
+
+    // ========================================
+// DB 삭제 전에 Storage 사진부터 삭제
+//
+// Storage RLS가 posts / post_images를 이용해
+// 삭제 권한을 확인할 수 있으므로
+// 게시글이 존재할 때 먼저 사진을 삭제한다.
+// ========================================
+
+    if (imagePaths.length > 0) {
+        const {
+            error: imageDeleteError,
+        } = await supabase.storage
+            .from("post-images")
+            .remove(imagePaths);
+
+        if (imageDeleteError) {
+            throw new Error(
+                `게시글 사진 삭제에 실패했습니다: ${imageDeleteError.message}`
+            );
+        }
+    }
+
+// ========================================
+// 사진 정리가 끝난 뒤 게시글 삭제
+//
+// post_images는 FK ON DELETE CASCADE로
+// 함께 삭제됨
+// ========================================
+
+    const {
+        error: deleteError,
+    } = await supabase
         .from("posts")
         .delete()
         .eq("id", postId)
         .eq("user_id", user.id);
 
     if (deleteError) {
-        throw new Error(deleteError.message);
-    }
-
-    // 게시글에 사진이 있었다면 Storage에서도 삭제
-    if (post.image_path) {
-        const { error: imageDeleteError } =
-            await supabase.storage
-                .from("post-images")
-                .remove([post.image_path]);
-
-        if (imageDeleteError) {
-            console.error(
-                "게시글은 삭제됐지만 사진 삭제 실패:",
-                imageDeleteError
-            );
-        }
+        throw new Error(
+            deleteError.message
+        );
     }
 
     revalidatePath("/");
@@ -922,15 +1083,15 @@ export async function deleteGroup(
     }
 
     // ========================================
-    // 그룹 게시글 사진 경로 조회
-    // ========================================
+// 그룹에 속한 게시글 ID + 기존 사진 경로 조회
+// ========================================
 
     const {
         data: groupPosts,
         error: postsError,
     } = await supabase
         .from("posts")
-        .select("image_path")
+        .select("id, image_path")
         .eq("group_id", groupId);
 
     if (postsError) {
@@ -939,7 +1100,46 @@ export async function deleteGroup(
         );
     }
 
-    const imagePaths =
+    const postIds =
+        (groupPosts ?? []).map(
+            (post) => post.id
+        );
+
+// ========================================
+// post_images에 저장된 모든 사진 경로 조회
+// ========================================
+
+    let postImagePaths: string[] = [];
+
+    if (postIds.length > 0) {
+        const {
+            data: postImages,
+            error: imagesError,
+        } = await supabase
+            .from("post_images")
+            .select("image_path")
+            .in("post_id", postIds);
+
+        if (imagesError) {
+            throw new Error(
+                imagesError.message
+            );
+        }
+
+        postImagePaths =
+            (postImages ?? [])
+                .map(
+                    (image) =>
+                        image.image_path
+                )
+                .filter(Boolean);
+    }
+
+// ========================================
+// 기존 posts.image_path도 임시 호환용으로 포함
+// ========================================
+
+    const legacyImagePaths =
         (groupPosts ?? [])
             .map(
                 (post) =>
@@ -952,10 +1152,17 @@ export async function deleteGroup(
                     Boolean(path)
             );
 
-    // ========================================
-    // 중요:
-    // 그룹을 삭제하기 전에 Storage 사진 삭제
-    // ========================================
+// 중복 사진 경로 제거
+    const imagePaths = Array.from(
+        new Set([
+            ...postImagePaths,
+            ...legacyImagePaths,
+        ])
+    );
+
+// ========================================
+// 그룹 삭제 전에 Storage의 모든 사진 삭제
+// ========================================
 
     if (imagePaths.length > 0) {
         const {

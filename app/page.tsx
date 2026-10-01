@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { CreatePostForm } from "@/components/create-post-form";
 import { PostMenu } from "@/components/post-menu";
-import { CommentDeleteButton } from "@/components/comment-delete-button";
 import { CommentForm } from "@/components/comment-form";
 import { CommentList } from "@/components/comment-list";
 
@@ -231,6 +230,11 @@ async function Feed({
             created_at,
             user_id,
             group_id,
+            post_images (
+                id,
+                image_path,
+                sort_order
+            ),
 
             profiles!posts_user_id_fkey (
                 nickname,
@@ -294,25 +298,62 @@ async function Feed({
         await Promise.all(
             (posts ?? []).map(
                 async (post: any) => {
-                    let imageUrl:
-                        | string
-                        | null = null;
+                    const sortedPostImages = [
+                        ...(post.post_images ?? []),
+                    ].sort(
+                        (a: any, b: any) =>
+                            a.sort_order - b.sort_order
+                    );
 
-                    if (post.image_path) {
-                        const { data } =
-                            await supabase.storage
-                                .from(
-                                    "post-images"
-                                )
-                                .createSignedUrl(
-                                    post.image_path,
-                                    60 * 60
-                                );
+                    const imageUrls = (
+                        await Promise.all(
+                            sortedPostImages.map(
+                                async (postImage: any) => {
+                                    const { data, error } =
+                                        await supabase.storage
+                                            .from(
+                                                "post-images"
+                                            )
+                                            .createSignedUrl(
+                                                postImage.image_path,
+                                                60 * 60
+                                            );
 
-                        imageUrl =
-                            data?.signedUrl ??
-                            null;
-                    }
+                                    if (error) {
+                                        console.error(
+                                            "게시글 사진 URL 생성 실패:",
+                                            error
+                                        );
+
+                                        return null;
+                                    }
+
+                                    if (!data?.signedUrl) {
+                                        return null;
+                                    }
+
+                                    return {
+                                        id: postImage.id,
+                                        image_path:
+                                        postImage.image_path,
+                                        sort_order:
+                                        postImage.sort_order,
+                                        image_url:
+                                        data.signedUrl,
+                                    };
+                                }
+                            )
+                        )
+                    ).filter(
+                        (
+                            image
+                        ): image is {
+                            id: number;
+                            image_path: string;
+                            sort_order: number;
+                            image_url: string;
+                        } => image !== null
+                    );
 
                     let authorAvatarUrl:
                         | string
@@ -395,8 +436,8 @@ async function Feed({
 
                     return {
                         ...post,
-                        image_url:
-                        imageUrl,
+                        image_urls:
+                        imageUrls,
                         author_avatar_url:
                         authorAvatarUrl,
                         comments:
@@ -1026,15 +1067,45 @@ async function Feed({
                                                 )}
 
                                                 {/* 사진 */}
-                                                {post.image_url && (
-                                                    <div className="px-2 sm:px-3">
-                                                        <img
-                                                            src={
-                                                                post.image_url
-                                                            }
-                                                            alt="게시글 사진"
-                                                            className="max-h-[480px] w-full rounded-[20px] bg-gray-100 object-cover sm:max-h-[560px] xl:max-h-[600px]"
-                                                        />
+                                                {post.image_urls?.length > 0 && (
+                                                    <div
+                                                        className={`grid gap-1.5 px-2 sm:px-3 ${
+                                                            post.image_urls.length === 1
+                                                                ? "grid-cols-1"
+                                                                : "grid-cols-2"
+                                                        }`}
+                                                    >
+                                                        {post.image_urls.map(
+                                                            (
+                                                                image: any,
+                                                                index: number
+                                                            ) => (
+                                                                <div
+                                                                    key={image.id}
+                                                                    className={
+                                                                        post.image_urls
+                                                                            .length === 1
+                                                                            ? "overflow-hidden rounded-[20px] bg-gray-100"
+                                                                            : "overflow-hidden rounded-[16px] bg-gray-100"
+                                                                    }
+                                                                >
+                                                                    <img
+                                                                        src={
+                                                                            image.image_url
+                                                                        }
+                                                                        alt={`게시글 사진 ${
+                                                                            index + 1
+                                                                        }`}
+                                                                        className={
+                                                                            post.image_urls
+                                                                                .length === 1
+                                                                                ? "max-h-[480px] w-full object-cover sm:max-h-[560px] xl:max-h-[600px]"
+                                                                                : "aspect-square w-full object-cover"
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        )}
                                                     </div>
                                                 )}
 

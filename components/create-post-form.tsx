@@ -21,8 +21,8 @@ export function CreatePostForm({
                                    avatarUrl,
                                }: CreatePostFormProps) {
     const [content, setContent] = useState("");
-    const [image, setImage] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [images, setImages] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [isExpanded, setIsExpanded] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
@@ -31,19 +31,18 @@ export function CreatePostForm({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        if (!image) {
-            setPreviewUrl(null);
-            return;
-        }
+        const objectUrls = images.map((image) =>
+            URL.createObjectURL(image)
+        );
 
-        const objectUrl = URL.createObjectURL(image);
-
-        setPreviewUrl(objectUrl);
+        setPreviewUrls(objectUrls);
 
         return () => {
-            URL.revokeObjectURL(objectUrl);
+            objectUrls.forEach((url) => {
+                URL.revokeObjectURL(url);
+            });
         };
-    }, [image]);
+    }, [images]);
 
     useEffect(() => {
         if (!isExpanded) {
@@ -59,8 +58,13 @@ export function CreatePostForm({
         };
     }, [isExpanded]);
 
-    function removeImage() {
-        setImage(null);
+    function removeImage(index: number) {
+        setImages((current) =>
+            current.filter(
+                (_, imageIndex) =>
+                    imageIndex !== index
+            )
+        );
 
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -73,7 +77,7 @@ export function CreatePostForm({
         }
 
         setContent("");
-        setImage(null);
+        setImages([]);
         setErrorMessage("");
         setIsExpanded(false);
 
@@ -97,7 +101,10 @@ export function CreatePostForm({
 
         const trimmedContent = content.trim();
 
-        if (!trimmedContent && !image) {
+        if (
+            !trimmedContent &&
+            images.length === 0
+        ) {
             setErrorMessage(
                 "글이나 사진을 추가해주세요."
             );
@@ -111,17 +118,31 @@ export function CreatePostForm({
             return;
         }
 
-        if (image) {
-            if (!image.type.startsWith("image/")) {
+        if (images.length > 5) {
+            setErrorMessage(
+                "사진은 최대 5장까지 추가할 수 있습니다."
+            );
+            return;
+        }
+
+        for (const image of images) {
+            if (
+                !image.type.startsWith(
+                    "image/"
+                )
+            ) {
                 setErrorMessage(
                     "이미지 파일만 업로드할 수 있습니다."
                 );
                 return;
             }
 
-            if (image.size > 5 * 1024 * 1024) {
+            if (
+                image.size >
+                5 * 1024 * 1024
+            ) {
                 setErrorMessage(
-                    "사진은 5MB 이하만 업로드할 수 있습니다."
+                    "사진 한 장당 5MB 이하만 업로드할 수 있습니다."
                 );
                 return;
             }
@@ -132,13 +153,15 @@ export function CreatePostForm({
 
         const supabase = createClient();
 
-        let uploadedImagePath: string | null = null;
+        const uploadedImagePaths: string[] =
+            [];
 
         try {
             const {
                 data: { user },
                 error: userError,
-            } = await supabase.auth.getUser();
+            } =
+                await supabase.auth.getUser();
 
             if (userError || !user) {
                 throw new Error(
@@ -146,7 +169,7 @@ export function CreatePostForm({
                 );
             }
 
-            if (image) {
+            for (const image of images) {
                 const extension =
                     image.name
                         .split(".")
@@ -154,14 +177,14 @@ export function CreatePostForm({
                         ?.toLowerCase() ||
                     "jpg";
 
-                uploadedImagePath =
+                const imagePath =
                     `${user.id}/${crypto.randomUUID()}.${extension}`;
 
                 const { error: uploadError } =
                     await supabase.storage
                         .from("post-images")
                         .upload(
-                            uploadedImagePath,
+                            imagePath,
                             image,
                             {
                                 contentType:
@@ -175,6 +198,10 @@ export function CreatePostForm({
                         uploadError.message
                     );
                 }
+
+                uploadedImagePaths.push(
+                    imagePath
+                );
             }
 
             const formData = new FormData();
@@ -189,21 +216,24 @@ export function CreatePostForm({
                 trimmedContent
             );
 
-            if (uploadedImagePath) {
-                formData.set(
-                    "image_path",
-                    uploadedImagePath
-                );
-            }
+            uploadedImagePaths.forEach(
+                (imagePath) => {
+                    formData.append(
+                        "image_paths",
+                        imagePath
+                    );
+                }
+            );
 
             await createPost(formData);
 
             setContent("");
-            setImage(null);
+            setImages([]);
             setIsExpanded(false);
 
             if (fileInputRef.current) {
-                fileInputRef.current.value = "";
+                fileInputRef.current.value =
+                    "";
             }
 
             if (textareaRef.current) {
@@ -211,12 +241,14 @@ export function CreatePostForm({
                     "auto";
             }
         } catch (error) {
-            if (uploadedImagePath) {
+            if (
+                uploadedImagePaths.length > 0
+            ) {
                 await supabase.storage
                     .from("post-images")
-                    .remove([
-                        uploadedImagePath,
-                    ]);
+                    .remove(
+                        uploadedImagePaths
+                    );
             }
 
             setErrorMessage(
@@ -353,27 +385,54 @@ export function CreatePostForm({
                 </div>
 
                 {/* 사진 미리보기 */}
-                {previewUrl && (
-                    <div className="relative mt-4 overflow-hidden rounded-[20px] bg-gray-100">
-                        <img
-                            src={previewUrl}
-                            alt="선택한 사진 미리보기"
-                            className="max-h-[440px] w-full object-cover"
-                        />
+                {/* 사진 미리보기 */}
+                {previewUrls.length > 0 && (
+                    <div
+                        className={`mt-4 grid gap-2 ${
+                            previewUrls.length === 1
+                                ? "grid-cols-1"
+                                : "grid-cols-2"
+                        }`}
+                    >
+                        {previewUrls.map(
+                            (previewUrl, index) => (
+                                <div
+                                    key={previewUrl}
+                                    className="relative overflow-hidden rounded-[18px] bg-gray-100"
+                                >
+                                    <img
+                                        src={previewUrl}
+                                        alt={`선택한 사진 ${
+                                            index + 1
+                                        }`}
+                                        className={
+                                            previewUrls.length ===
+                                            1
+                                                ? "max-h-[440px] w-full object-cover"
+                                                : "aspect-square w-full object-cover"
+                                        }
+                                    />
 
-                        <button
-                            type="button"
-                            onClick={
-                                removeImage
-                            }
-                            disabled={
-                                isSubmitting
-                            }
-                            aria-label="사진 제거"
-                            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 disabled:opacity-50"
-                        >
-                            <CloseIcon />
-                        </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            removeImage(
+                                                index
+                                            )
+                                        }
+                                        disabled={
+                                            isSubmitting
+                                        }
+                                        aria-label={`${
+                                            index + 1
+                                        }번째 사진 제거`}
+                                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white shadow-sm backdrop-blur transition hover:bg-black/80 disabled:opacity-50"
+                                    >
+                                        <CloseIcon />
+                                    </button>
+                                </div>
+                            )
+                        )}
                     </div>
                 )}
 
@@ -397,64 +456,87 @@ export function CreatePostForm({
                     <ImageIcon />
 
                     <span>
-                        {image
-                            ? "사진 변경"
-                            : "사진 추가"}
-                    </span>
+    {images.length > 0
+        ? `사진 추가 (${images.length}/5)`
+        : "사진 추가"}
+</span>
 
                     <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
+                        multiple
                         disabled={
-                            isSubmitting
+                            isSubmitting ||
+                            images.length >= 5
                         }
                         className="hidden"
-                        onChange={(
-                            event
-                        ) => {
-                            const file =
-                                event.target
-                                    .files?.[0] ??
-                                null;
+                        onChange={(event) => {
+                            const selectedFiles =
+                                Array.from(
+                                    event.target.files ?? []
+                                );
 
-                            if (!file) {
+                            if (
+                                selectedFiles.length === 0
+                            ) {
                                 return;
                             }
 
                             if (
-                                !file.type.startsWith(
-                                    "image/"
-                                )
+                                images.length +
+                                selectedFiles.length >
+                                5
                             ) {
+                                setErrorMessage(
+                                    "사진은 최대 5장까지 추가할 수 있습니다."
+                                );
+
+                                event.target.value = "";
+                                return;
+                            }
+
+                            const invalidFile =
+                                selectedFiles.find(
+                                    (file) =>
+                                        !file.type.startsWith(
+                                            "image/"
+                                        )
+                                );
+
+                            if (invalidFile) {
                                 setErrorMessage(
                                     "이미지 파일만 선택해주세요."
                                 );
 
-                                event.target.value =
-                                    "";
+                                event.target.value = "";
                                 return;
                             }
 
-                            if (
-                                file.size >
-                                5 *
-                                1024 *
-                                1024
-                            ) {
-                                setErrorMessage(
-                                    "사진은 5MB 이하만 업로드할 수 있습니다."
+                            const oversizedFile =
+                                selectedFiles.find(
+                                    (file) =>
+                                        file.size >
+                                        5 * 1024 * 1024
                                 );
 
-                                event.target.value =
-                                    "";
+                            if (oversizedFile) {
+                                setErrorMessage(
+                                    "사진 한 장당 5MB 이하만 업로드할 수 있습니다."
+                                );
+
+                                event.target.value = "";
                                 return;
                             }
 
-                            setImage(file);
-                            setErrorMessage(
-                                ""
-                            );
+                            setImages((current) => [
+                                ...current,
+                                ...selectedFiles,
+                            ]);
+
+                            setErrorMessage("");
+
+                            event.target.value = "";
                         }}
                     />
                 </label>
@@ -464,7 +546,7 @@ export function CreatePostForm({
                     disabled={
                         isSubmitting ||
                         (!content.trim() &&
-                            !image)
+                            images.length === 0)
                     }
                     className="flex h-10 min-w-[82px] items-center justify-center rounded-full bg-gray-950 px-5 text-[13px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                 >
