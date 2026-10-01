@@ -635,36 +635,135 @@ async function SettingsContent() {
             {/* ========================================
                 하단 메뉴
             ======================================== */}
-            <nav className="fixed bottom-0 left-1/2 z-30 flex h-[72px] w-full max-w-[720px] -translate-x-1/2 items-center border-x border-t border-gray-100 bg-white/95 px-8 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+            {/* ========================================
+    하단 메뉴
+======================================== */}
+            <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1">
 
                 <a
                     href="/"
-                    className="flex flex-1 flex-col items-center justify-center gap-1 text-gray-300"
+                    aria-label="피드"
+                    className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
                 >
-                    <span className="text-[22px] leading-none">
-                        ⌂
-                    </span>
+                    <HomeIcon />
 
-                    <span className="text-[10px] font-bold">
-                        피드
-                    </span>
+                    <span className="text-[9px] font-bold">
+            피드
+        </span>
+                </a>
+
+                <a
+                    href="/notifications"
+                    aria-label="알림"
+                    className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
+                >
+                    <BellIcon />
+
+                    <span className="text-[9px] font-bold">
+            알림
+        </span>
                 </a>
 
                 <a
                     href="/settings"
-                    className="flex flex-1 flex-col items-center justify-center gap-1 text-black"
+                    aria-label="내 정보"
+                    className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
                 >
-                    <span className="text-[20px] leading-none">
-                        ●
-                    </span>
+                    {myAvatarUrl ? (
+                        <img
+                            src={myAvatarUrl}
+                            alt=""
+                            className="h-[22px] w-[22px] rounded-full object-cover"
+                        />
+                    ) : (
+                        <UserIcon />
+                    )}
 
-                    <span className="text-[10px] font-black">
-                        내 정보
-                    </span>
+                    <span className="text-[9px] font-black">
+            내 정보
+        </span>
                 </a>
-
             </nav>
         </main>
+    );
+}
+
+function HomeIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="m3 11 9-8 9 8"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M5 10v10h14V10M9 20v-6h6v6"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function BellIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <path
+                d="M10 21h4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
+function UserIcon() {
+    return (
+        <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <circle
+                cx="12"
+                cy="8"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+            <path
+                d="M4 21a8 8 0 0 1 16 0"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+        </svg>
     );
 }
 
