@@ -33,7 +33,6 @@ export function FeedRealtime({
                     event: "*",
                     schema: "public",
                     table: "posts",
-                    filter: `group_id=eq.${groupId}`,
                 },
                 (payload) => {
                     console.log(
