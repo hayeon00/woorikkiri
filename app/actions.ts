@@ -317,6 +317,74 @@ export async function createComment(formData: FormData) {
     revalidatePath("/");
 }
 
+export async function updatePost(formData: FormData) {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error("로그인이 필요합니다.");
+    }
+
+    const postId = Number(formData.get("post_id"));
+    const content = String(
+        formData.get("content") ?? ""
+    ).trim();
+
+    if (!Number.isInteger(postId) || postId <= 0) {
+        throw new Error("잘못된 게시물입니다.");
+    }
+
+    if (content.length > 500) {
+        throw new Error("게시글은 500자 이하로 작성해주세요.");
+    }
+
+    // 현재 게시물 확인
+    const {
+        data: post,
+        error: postError,
+    } = await supabase
+        .from("posts")
+        .select("id, user_id, group_id, image_path")
+        .eq("id", postId)
+        .single();
+
+    if (postError || !post) {
+        throw new Error("게시물을 찾을 수 없습니다.");
+    }
+
+    // Server Action에서도 작성자 확인
+    if (post.user_id !== user.id) {
+        throw new Error("본인의 게시물만 수정할 수 있습니다.");
+    }
+
+    // 사진도 없는데 글까지 비우는 것은 방지
+    if (!content && !post.image_path) {
+        throw new Error("내용이나 사진 중 하나는 있어야 합니다.");
+    }
+
+    const { error: updateError } = await supabase
+        .from("posts")
+        .update({
+            content,
+        })
+        .eq("id", postId)
+        .eq("user_id", user.id);
+
+    if (updateError) {
+        console.error(
+            "게시물 수정 실패:",
+            updateError
+        );
+
+        throw new Error("게시물을 수정하지 못했습니다.");
+    }
+
+    revalidatePath("/");
+}
+
 export async function deletePost(postId: number) {
     const supabase = await createClient();
 

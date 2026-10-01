@@ -610,7 +610,7 @@ async function SettingsContent() {
 
                         <div className="border-t border-red-50 bg-red-50/60 p-4">
                             <p className="text-xs leading-5 text-gray-500">
-                                계정을 탈퇴하면 다시
+                                 계정을 탈퇴하면 다시
                                 로그인할 수 없습니다.
                                 이전에 작성한 게시물과
                                 댓글은 공간의 기록으로

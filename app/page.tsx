@@ -12,6 +12,7 @@ import {
     createComment,
     deletePost,
     deleteComment,
+    updatePost,
 } from "./actions";
 
 async function Feed({
@@ -437,6 +438,14 @@ async function Feed({
                     name: string;
                 } => group !== null
             ) ?? [];
+
+    async function updatePostAction(
+        formData: FormData
+    ) {
+        "use server";
+
+        await updatePost(formData);
+    }
 
     async function deletePostAction(
         formData: FormData
@@ -992,6 +1001,12 @@ async function Feed({
                                                     {post.user_id === user.id && (
                                                         <PostMenu
                                                             postId={post.id}
+                                                            currentContent={
+                                                                post.content ?? ""
+                                                            }
+                                                            updateAction={
+                                                                updatePostAction
+                                                            }
                                                             deleteAction={
                                                                 deletePostAction
                                                             }
