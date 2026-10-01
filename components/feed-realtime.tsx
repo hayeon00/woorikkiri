@@ -15,93 +15,71 @@ export function FeedRealtime({
     const router = useRouter();
 
     useEffect(() => {
-        const supabase =
-            createClient();
+        const supabase = createClient();
 
-        async function testAccess() {
+        let channel: ReturnType<typeof supabase.channel> | null = null;
+
+        async function startRealtime() {
             const {
-                data: userData,
-                error: userError,
-            } = await supabase.auth.getUser();
+                data: { session },
+                error: sessionError,
+            } = await supabase.auth.getSession();
 
             console.log(
-                "[Realtime] 현재 사용자:",
-                userData.user?.id,
-                userError
+                "[Realtime] 세션:",
+                !!session,
+                sessionError
             );
 
-            const {
-                data,
-                error,
-            } = await supabase
-                .from("posts")
-                .select("id, group_id, content")
-                .eq("group_id", groupId)
-                .order("created_at", {
-                    ascending: false,
-                })
-                .limit(3);
+            if (!session?.access_token) {
+                console.log("[Realtime] access token 없음");
+                return;
+            }
 
-            console.log(
-                "[Realtime] SELECT 테스트:",
-                data,
-                error
-            );
+            await supabase.realtime.setAuth(session.access_token);
+
+            console.log("[Realtime] 인증 토큰 적용 완료");
+
+            channel = supabase
+                .channel(`feed-realtime-${groupId}`)
+                .on(
+                    "system",
+                    "*",
+                    (payload) => {
+                        console.log("[Realtime] SYSTEM:", payload);
+                    }
+                )
+                .on(
+                    "postgres_changes",
+                    {
+                        event: "*",
+                        schema: "public",
+                        table: "posts",
+                    },
+                    (payload) => {
+                        console.log(
+                            "[Realtime] 게시글 변경 감지",
+                            payload
+                        );
+
+                        router.refresh();
+                    }
+                )
+                .subscribe((status, error) => {
+                    console.log(
+                        "[Realtime] 상태:",
+                        status,
+                        error
+                    );
+                });
         }
 
-        testAccess();
-
-        console.log(
-            "[Realtime] 시작",
-            groupId
-        );
-
-        const channel = supabase
-            .channel(
-                `feed-realtime-${groupId}`
-            )
-            .on(
-                "system",
-                "*",
-                (payload) => {
-                    console.log(
-                        "[Realtime] SYSTEM:",
-                        payload
-                    );
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "*",
-                    schema: "public",
-                    table: "posts",
-                },
-                (payload) => {
-                    console.log(
-                        "[Realtime] 게시글 변경 감지",
-                        payload
-                    );
-
-                    router.refresh();
-                }
-            )
-            .subscribe((status, error) => {
-                console.log(
-                    "[Realtime] 상태:",
-                    status,
-                    error
-                );
-            });
+        startRealtime();
 
         return () => {
-            console.log(
-                "[Realtime] 종료"
-            );
-
-            supabase.removeChannel(
-                channel
-            );
+            if (channel) {
+                supabase.removeChannel(channel);
+            }
         };
     }, [groupId, router]);
 
