@@ -1209,12 +1209,12 @@ async function Feed({
                     )}
 
                     {/* 모바일/태블릿 하단 내비게이션 */}
-                    <nav className="fixed bottom-0 left-1/2 z-30 flex h-[64px] w-full max-w-[720px] -translate-x-1/2 items-center border-t border-black/[0.05] bg-white/95 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:border-x xl:hidden">
+                    <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1 sm:border-x xl:hidden">
 
                         <a
                             href="/"
                             aria-label="피드"
-                            className="flex h-full flex-1 flex-col items-center justify-center gap-1 text-gray-950"
+                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
                         >
                             <HomeIcon />
 
@@ -1226,7 +1226,7 @@ async function Feed({
                         <a
                             href="/notifications"
                             aria-label="알림"
-                            className="flex h-full flex-1 flex-col items-center justify-center gap-1 text-gray-400"
+                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
                         >
                             <span className="relative">
                                 <BellIcon />
@@ -1251,7 +1251,7 @@ async function Feed({
                         <a
                             href="/settings"
                             aria-label="내 정보"
-                            className="flex h-full flex-1 flex-col items-center justify-center gap-1 text-gray-400"
+                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
                         >
                             {myAvatarUrl ? (
                                 <img
