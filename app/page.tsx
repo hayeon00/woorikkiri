@@ -9,6 +9,7 @@ import { CommentForm } from "@/components/comment-form";
 import { CommentList } from "@/components/comment-list";
 import { PostImageSlider } from "@/components/post-image-slider";
 import { FeedRealtime } from "@/components/feed-realtime";
+import { LikeButton } from "@/components/like-button";
 
 import {
     toggleLike,
@@ -509,6 +510,14 @@ async function Feed({
         }
 
         await deletePost(postId);
+    }
+
+    async function toggleLikeAction(
+        postId: number
+    ) {
+        "use server";
+
+        await toggleLike(postId);
     }
 
     async function deleteCommentAction(
@@ -1087,37 +1096,18 @@ async function Feed({
                                                     <div className="flex items-center gap-5">
 
                                                         {/* 좋아요 */}
-                                                        <form
-                                                            action={async () => {
-                                                                "use server";
-
-                                                                await toggleLike(
-                                                                    post.id
-                                                                );
-                                                            }}
-                                                        >
-                                                            <button
-                                                                type="submit"
-                                                                aria-label="좋아요"
-                                                                className={
-                                                                    post.liked_by_me
-                                                                        ? "flex items-center gap-1.5 text-red-500"
-                                                                        : "flex items-center gap-1.5 text-gray-700 transition hover:text-black"
-                                                                }
-                                                            >
-                                                                <HeartIcon
-                                                                    filled={
-                                                                        post.liked_by_me
-                                                                    }
-                                                                />
-
-                                                                <span className="text-[11px] font-black">
-                                                                    {
-                                                                        post.like_count
-                                                                    }
-                                                                </span>
-                                                            </button>
-                                                        </form>
+                                                        <LikeButton
+                                                            postId={post.id}
+                                                            initialLiked={
+                                                                post.liked_by_me
+                                                            }
+                                                            initialCount={
+                                                                post.like_count
+                                                            }
+                                                            toggleAction={
+                                                                toggleLikeAction
+                                                            }
+                                                        />
 
                                                         {/* 댓글 수 */}
                                                         <div className="flex items-center gap-1.5 text-gray-700">
@@ -1461,33 +1451,7 @@ function WriteIcon() {
 }
 
 
-function HeartIcon({
-                       filled,
-                   }: {
-    filled: boolean;
-}) {
-    return (
-        <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill={
-                filled
-                    ? "currentColor"
-                    : "none"
-            }
-            aria-hidden="true"
-        >
-            <path
-                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
+
 
 function CommentIcon() {
     return (
@@ -1509,25 +1473,6 @@ function CommentIcon() {
     );
 }
 
-function ArrowUpIcon() {
-    return (
-        <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="M12 19V5M5 12l7-7 7 7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
 
 function ChevronRightIcon() {
     return (
