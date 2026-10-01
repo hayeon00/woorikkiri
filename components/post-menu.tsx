@@ -218,7 +218,10 @@ export function PostMenu({
                         className="w-full max-w-[420px] overflow-hidden rounded-[26px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]"
                     >
                         <form
-                            action={updateAction}
+                            action={async (formData) => {
+                                await updateAction(formData);
+                                setIsEditOpen(false);
+                            }}
                         >
                             <input
                                 type="hidden"
