@@ -1513,3 +1513,51 @@ export async function deleteAccount(
     redirect("/auth/login");
 
 }
+
+export async function savePushSubscription(
+    subscription: {
+        endpoint: string;
+        keys: {
+            p256dh: string;
+            auth: string;
+        };
+    },
+    userAgent?: string
+) {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error("로그인이 필요합니다.");
+    }
+
+    const { error } = await supabase
+        .from("push_subscriptions")
+        .upsert(
+            {
+                user_id: user.id,
+                endpoint: subscription.endpoint,
+                p256dh: subscription.keys.p256dh,
+                auth: subscription.keys.auth,
+                user_agent: userAgent ?? null,
+                updated_at: new Date().toISOString(),
+            },
+            {
+                onConflict: "endpoint",
+            }
+        );
+
+    if (error) {
+        console.error(
+            "푸시 구독 저장 실패:",
+            error
+        );
+
+        throw new Error(
+            "푸시 알림 등록에 실패했습니다."
+        );
+    }
+}

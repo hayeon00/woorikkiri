@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { InviteLinkButton } from "@/components/invite-link-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { AvatarEditor } from "@/components/avatar-editor";
+import { PushNotificationButton } from "@/components/push-notification-button";
 
 import {
     logout,
@@ -601,6 +602,23 @@ async function SettingsContent() {
                             </button>
                         </form>
                     </details>
+                </section>
+
+                <section className="rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-6">
+                    <p className="text-[10px] font-bold tracking-wider text-gray-400">
+                        NOTIFICATIONS
+                    </p>
+
+                    <h2 className="mt-1 text-lg font-black">
+                        푸시 알림
+                    </h2>
+
+                    <p className="mt-1 mb-4 text-sm leading-6 text-gray-400">
+                        새 게시물, 좋아요, 댓글 소식을
+                        휴대폰에서 받아보세요.
+                    </p>
+
+                    <PushNotificationButton />
                 </section>
 
                 {/* ========================================
