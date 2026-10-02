@@ -18,7 +18,7 @@ import {
     deletePost,
     deleteComment,
     updatePost,
-} from "./actions";
+} from "../actions";
 
 async function Feed({
                         searchParams,
@@ -562,7 +562,7 @@ async function Feed({
                     <div className="sticky top-0 flex h-screen flex-col px-3 py-8">
 
                         <Link
-                            href="/"
+                            href="/public"
                             className="flex items-center gap-3 px-3"
                         >
                             <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gray-950 text-[16px] font-black text-white">
@@ -577,7 +577,7 @@ async function Feed({
                         <nav className="mt-10 space-y-1">
 
                             <Link
-                                href="/"
+                                href="/public"
                                 className="flex h-12 items-center gap-3 rounded-[16px] bg-white px-4 text-[14px] font-black shadow-[0_4px_20px_rgba(0,0,0,0.035)]"
                             >
                                 <HomeIcon />
@@ -644,7 +644,7 @@ async function Feed({
                                                         key={
                                                             group.id
                                                         }
-                                                        href={`/?group=${group.id}`}
+                                                        href={`/public?group=${group.id}`}
                                                         className={
                                                             selected
                                                                 ? "flex h-10 items-center gap-2.5 rounded-[14px] bg-black/[0.045] px-4 text-[12px] font-black text-gray-950"
@@ -1147,68 +1147,6 @@ async function Feed({
                         </>
                     )}
 
-                    {/* 모바일/태블릿 하단 내비게이션 */}
-                    <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1 sm:border-x xl:hidden">
-
-                        <Link
-                            href="/"
-                            aria-label="피드"
-                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
-                        >
-                            <HomeIcon />
-
-                            <span className="text-[9px] font-black">
-                                피드
-                            </span>
-                        </Link>
-
-                        <Link
-                            href="/notifications"
-                            aria-label="알림"
-                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
-                        >
-                            <span className="relative">
-                                <BellIcon />
-
-                                {(unreadNotificationCount ??
-                                    0) > 0 && (
-                                    <span className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[8px] font-black leading-none text-white">
-                                        {(unreadNotificationCount ??
-                                            0) >
-                                        99
-                                            ? "99+"
-                                            : unreadNotificationCount}
-                                    </span>
-                                )}
-                            </span>
-
-                            <span className="text-[9px] font-bold">
-                                알림
-                            </span>
-                        </Link>
-
-                        <Link
-                            href="/settings"
-                            aria-label="내 정보"
-                            className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
-                        >
-                            {myAvatarUrl ? (
-                                <img
-                                    src={
-                                        myAvatarUrl
-                                    }
-                                    alt=""
-                                    className="h-[22px] w-[22px] rounded-full object-cover opacity-70"
-                                />
-                            ) : (
-                                <UserIcon />
-                            )}
-
-                            <span className="text-[9px] font-bold">
-                                내 정보
-                            </span>
-                        </Link>
-                    </nav>
                 </div>
 
                 {/* ========================================

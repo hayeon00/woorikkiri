@@ -1,0 +1,167 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export function BottomNav() {
+    const pathname = usePathname();
+
+    const isFeed = pathname === "/";
+    const isNotifications =
+        pathname.startsWith("/notifications");
+    const isSettings =
+        pathname.startsWith("/settings");
+
+    return (
+        <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1">
+
+            <Link
+                href="/"
+                aria-label="피드"
+                className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
+                    isFeed
+                        ? "text-gray-950"
+                        : "text-gray-400"
+                }`}
+            >
+                <HomeIcon />
+
+                <span
+                    className={
+                        isFeed
+                            ? "text-[9px] font-black"
+                            : "text-[9px] font-bold"
+                    }
+                >
+                    피드
+                </span>
+            </Link>
+
+            <Link
+                href="/notifications"
+                aria-label="알림"
+                className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
+                    isNotifications
+                        ? "text-gray-950"
+                        : "text-gray-400"
+                }`}
+            >
+                <BellIcon />
+
+                <span
+                    className={
+                        isNotifications
+                            ? "text-[9px] font-black"
+                            : "text-[9px] font-bold"
+                    }
+                >
+                    알림
+                </span>
+            </Link>
+
+            <Link
+                href="/settings"
+                aria-label="내 정보"
+                className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
+                    isSettings
+                        ? "text-gray-950"
+                        : "text-gray-400"
+                }`}
+            >
+                <UserIcon />
+
+                <span
+                    className={
+                        isSettings
+                            ? "text-[9px] font-black"
+                            : "text-[9px] font-bold"
+                    }
+                >
+                    내 정보
+                </span>
+            </Link>
+        </nav>
+    );
+}
+
+function HomeIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="m3 11 9-8 9 8"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+
+            <path
+                d="M5 10v10h14V10M9 20v-6h6v6"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function BellIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+
+            <path
+                d="M10 21h4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
+
+function UserIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <circle
+                cx="12"
+                cy="8"
+                r="4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <path
+                d="M4 21a8 8 0 0 1 16 0"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+            />
+        </svg>
+    );
+}
