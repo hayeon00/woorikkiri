@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import webpush from "web-push";
+import { sendPushToUsers } from "@/lib/push";
 
 export async function createPost(formData: FormData) {
     const supabase = await createClient();
@@ -242,6 +243,24 @@ export async function createPost(formData: FormData) {
                 notificationError
             );
         }
+
+        try {
+            await sendPushToUsers(
+                groupMembers.map(
+                    (member) => member.user_id
+                ),
+                {
+                    title: "우리끼리",
+                    body: "새 게시물이 올라왔어요.",
+                    url: `/?group=${groupId}#post-${post.id}`,
+                }
+            );
+        } catch (pushError) {
+            console.error(
+                "게시물 Push 발송 실패:",
+                pushError
+            );
+        }
     }
 
     revalidatePath("/");
@@ -272,7 +291,7 @@ export async function toggleLike(postId: number) {
         error: postError,
     } = await supabase
         .from("posts")
-        .select("id, user_id")
+        .select("id, user_id, group_id")
         .eq("id", postId)
         .maybeSingle();
 
@@ -318,6 +337,22 @@ export async function toggleLike(postId: number) {
                 console.error(
                     "좋아요 알림 삭제 실패:",
                     notificationError
+                );
+            }
+
+            try {
+                await sendPushToUsers(
+                    [post.user_id],
+                    {
+                        title: "우리끼리",
+                        body: "내 게시물에 좋아요가 달렸어요. ❤️",
+                        url: `/?group=${post.group_id}#post-${postId}`,
+                    }
+                );
+            } catch (pushError) {
+                console.error(
+                    "좋아요 Push 발송 실패:",
+                    pushError
                 );
             }
         }
@@ -406,7 +441,7 @@ export async function createComment(formData: FormData) {
         error: postError,
     } = await supabase
         .from("posts")
-        .select("id, user_id")
+        .select("id, user_id, group_id")
         .eq("id", postId)
         .maybeSingle();
 
@@ -456,6 +491,22 @@ export async function createComment(formData: FormData) {
             console.error(
                 "댓글 알림 생성 실패:",
                 notificationError
+            );
+        }
+
+        try {
+            await sendPushToUsers(
+                [post.user_id],
+                {
+                    title: "우리끼리",
+                    body: "내 게시물에 새 댓글이 달렸어요. 💬",
+                    url: `/?group=${post.group_id}#post-${postId}`,
+                }
+            );
+        } catch (pushError) {
+            console.error(
+                "댓글 Push 발송 실패:",
+                pushError
             );
         }
     }

@@ -112,18 +112,19 @@ export function CommentList({
                                         </span>
                                     </div>
 
-                                    <time className="mt-0.5 block text-[9px] font-medium text-gray-400">
+                                    <time
+                                        className="mt-0.5 block text-[9px] font-medium text-gray-400"
+                                        dateTime={comment.created_at}
+                                    >
                                         {new Date(
                                             comment.created_at
-                                        ).toLocaleString(
-                                            "ko-KR",
-                                            {
-                                                month: "numeric",
-                                                day: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            }
-                                        )}
+                                        ).toLocaleString("ko-KR", {
+                                            timeZone: "Asia/Seoul",
+                                            month: "numeric",
+                                            day: "numeric",
+                                            hour: "numeric",
+                                            minute: "2-digit",
+                                        })}
                                     </time>
                                 </div>
 
