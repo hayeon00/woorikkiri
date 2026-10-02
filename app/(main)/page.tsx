@@ -37,68 +37,74 @@ async function Feed({
     if (!user) {
         redirect("/auth/login");
     }
+// ========================================
+// 내 프로필 + 읽지 않은 알림 개수 병렬 조회
+// ========================================
 
-    // ========================================
-    // 내 프로필
-    // ========================================
+    const [
+        profileResult,
+        notificationCountResult,
+    ] = await Promise.all([
+        supabase
+            .from("profiles")
+            .select("nickname, avatar_url")
+            .eq("id", user.id)
+            .single(),
 
-    const { data: myProfile } = await supabase
-        .from("profiles")
-        .select("nickname, avatar_url")
-        .eq("id", user.id)
-        .single();
+        supabase
+            .from("notifications")
+            .select("id", {
+                count: "exact",
+                head: true,
+            })
+            .eq("user_id", user.id)
+            .eq("is_read", false),
+    ]);
 
-    // ========================================
-    // 읽지 않은 알림 개수
-    // ========================================
+    const myProfile =
+        profileResult.data;
 
-    const {
-        count: unreadNotificationCount,
-        error: notificationCountError,
-    } = await supabase
-        .from("notifications")
-        .select("id", {
-            count: "exact",
-            head: true,
-        })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
+    const unreadNotificationCount =
+        notificationCountResult.count;
 
-    if (notificationCountError) {
+    if (profileResult.error) {
         console.error(
-            "알림 개수 조회 실패:",
-            notificationCountError
+            "프로필 조회 실패:",
+            profileResult.error
         );
     }
 
-    // ========================================
-    // 내 프로필 사진
-    // ========================================
-
-    let myAvatarUrl: string | null = null;
-
-    if (myProfile?.avatar_url) {
-        const { data } = await supabase.storage
-            .from("avatars")
-            .createSignedUrl(
-                myProfile.avatar_url,
-                60 * 60
-            );
-
-        myAvatarUrl =
-            data?.signedUrl ?? null;
+    if (notificationCountResult.error) {
+        console.error(
+            "알림 개수 조회 실패:",
+            notificationCountResult.error
+        );
     }
 
-    // ========================================
-    // 내가 가입한 그룹
-    // ========================================
 
-    const {
-        data: memberships,
-        error: membershipError,
-    } = await supabase
-        .from("group_members")
-        .select(`
+// ========================================
+// 내 프로필 사진 + 그룹 목록 병렬 처리
+// ========================================
+
+    const [
+        myAvatarResult,
+        membershipResult,
+    ] = await Promise.all([
+        myProfile?.avatar_url
+            ? supabase.storage
+                .from("avatars")
+                .createSignedUrl(
+                    myProfile.avatar_url,
+                    60 * 60
+                )
+            : Promise.resolve({
+                data: null,
+                error: null,
+            }),
+
+        supabase
+            .from("group_members")
+            .select(`
             group_id,
             joined_at,
 
@@ -110,17 +116,79 @@ async function Feed({
                 created_at
             )
         `)
-        .eq("user_id", user.id)
-        .order("joined_at", {
-            ascending: true,
-        });
+            .eq("user_id", user.id)
+            .order("joined_at", {
+                ascending: true,
+            }),
+    ]);
 
-    if (membershipError) {
+    const myAvatarUrl =
+        myAvatarResult.data?.signedUrl ??
+        null;
+
+    const memberships =
+        membershipResult.data;
+
+    if (myAvatarResult.error) {
         console.error(
-            "그룹 조회 실패:",
-            membershipError
+            "내 프로필 사진 URL 생성 실패:",
+            myAvatarResult.error
         );
     }
+
+    if (membershipResult.error) {
+        console.error(
+            "그룹 조회 실패:",
+            membershipResult.error
+        );
+    }
+
+    const avatarUrlCache = new Map<
+        string,
+        Promise<string | null>
+    >();
+
+    function getAvatarSignedUrl(
+        path: string | null | undefined
+    ) {
+        if (!path) {
+            return Promise.resolve(null);
+        }
+
+        const cached =
+            avatarUrlCache.get(path);
+
+        if (cached) {
+            return cached;
+        }
+
+        const promise = supabase.storage
+            .from("avatars")
+            .createSignedUrl(
+                path,
+                60 * 60
+            )
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error(
+                        "프로필 사진 URL 생성 실패:",
+                        error
+                    );
+
+                    return null;
+                }
+
+                return data?.signedUrl ?? null;
+            });
+
+        avatarUrlCache.set(
+            path,
+            promise
+        );
+
+        return promise;
+    }
+
 
     const requestedGroupId =
         Number(params.group);
@@ -179,42 +247,16 @@ async function Feed({
                 data ?? [];
         }
     }
-
     const groupMembersWithAvatars =
         await Promise.all(
             groupMembers.map(
-                async (member: any) => {
-                    let avatarUrl:
-                        | string
-                        | null = null;
-
-                    if (
-                        member.profiles
-                            ?.avatar_url
-                    ) {
-                        const { data } =
-                            await supabase.storage
-                                .from(
-                                    "avatars"
-                                )
-                                .createSignedUrl(
-                                    member
-                                        .profiles
-                                        .avatar_url,
-                                    60 * 60
-                                );
-
-                        avatarUrl =
-                            data?.signedUrl ??
-                            null;
-                    }
-
-                    return {
-                        ...member,
-                        avatar_url:
-                        avatarUrl,
-                    };
-                }
+                async (member: any) => ({
+                    ...member,
+                    avatar_url:
+                        await getAvatarSignedUrl(
+                            member.profiles?.avatar_url
+                        ),
+                })
             )
         );
 
@@ -294,6 +336,7 @@ async function Feed({
         );
     }
 
+
     // ========================================
     // 게시글 / 프로필 사진 Signed URL
     // ========================================
@@ -359,30 +402,11 @@ async function Feed({
                         } => image !== null
                     );
 
-                    let authorAvatarUrl:
-                        | string
-                        | null = null;
+                    const authorAvatarUrl =
+                        await getAvatarSignedUrl(
+                            post.profiles?.avatar_url
+                        );
 
-                    if (
-                        post.profiles
-                            ?.avatar_url
-                    ) {
-                        const { data } =
-                            await supabase.storage
-                                .from(
-                                    "avatars"
-                                )
-                                .createSignedUrl(
-                                    post
-                                        .profiles
-                                        .avatar_url,
-                                    60 * 60
-                                );
-
-                        authorAvatarUrl =
-                            data?.signedUrl ??
-                            null;
-                    }
 
                     const commentsWithAvatars =
                         await Promise.all(
@@ -393,34 +417,10 @@ async function Feed({
                                 async (
                                     comment: any
                                 ) => {
-                                    let commentAvatarUrl:
-                                        | string
-                                        | null =
-                                        null;
-
-                                    if (
-                                        comment
-                                            .profiles
-                                            ?.avatar_url
-                                    ) {
-                                        const {
-                                            data,
-                                        } =
-                                            await supabase.storage
-                                                .from(
-                                                    "avatars"
-                                                )
-                                                .createSignedUrl(
-                                                    comment
-                                                        .profiles
-                                                        .avatar_url,
-                                                    60 * 60
-                                                );
-
-                                        commentAvatarUrl =
-                                            data?.signedUrl ??
-                                            null;
-                                    }
+                                    const commentAvatarUrl =
+                                        await getAvatarSignedUrl(
+                                            comment.profiles?.avatar_url
+                                        );
 
                                     return {
                                         ...comment,
@@ -562,7 +562,7 @@ async function Feed({
                     <div className="sticky top-0 flex h-screen flex-col px-3 py-8">
 
                         <Link
-                            href="/public"
+                            href="/"
                             className="flex items-center gap-3 px-3"
                         >
                             <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gray-950 text-[16px] font-black text-white">
@@ -577,7 +577,7 @@ async function Feed({
                         <nav className="mt-10 space-y-1">
 
                             <Link
-                                href="/public"
+                                href="/"
                                 className="flex h-12 items-center gap-3 rounded-[16px] bg-white px-4 text-[14px] font-black shadow-[0_4px_20px_rgba(0,0,0,0.035)]"
                             >
                                 <HomeIcon />
@@ -644,7 +644,7 @@ async function Feed({
                                                         key={
                                                             group.id
                                                         }
-                                                        href={`/public?group=${group.id}`}
+                                                        href={`/?group=${group.id}`}
                                                         className={
                                                             selected
                                                                 ? "flex h-10 items-center gap-2.5 rounded-[14px] bg-black/[0.045] px-4 text-[12px] font-black text-gray-950"
