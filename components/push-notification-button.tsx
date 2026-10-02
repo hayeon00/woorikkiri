@@ -35,29 +35,39 @@ export function PushNotificationButton() {
 
     async function enablePush() {
         setLoading(true);
-        setMessage(null);
+        setMessage("1/6 브라우저 기능 확인 중...");
 
         try {
-            if (
-                !("serviceWorker" in navigator) ||
-                !("PushManager" in window) ||
-                !("Notification" in window)
-            ) {
-                setMessage(
-                    "이 기기에서는 푸시 알림을 사용할 수 없어요."
+            if (!("serviceWorker" in navigator)) {
+                throw new Error(
+                    "SERVICE_WORKER_NOT_SUPPORTED"
                 );
-                return;
             }
 
+            if (!("PushManager" in window)) {
+                throw new Error(
+                    "PUSH_MANAGER_NOT_SUPPORTED"
+                );
+            }
+
+            if (!("Notification" in window)) {
+                throw new Error(
+                    "NOTIFICATION_NOT_SUPPORTED"
+                );
+            }
+
+            setMessage("2/6 VAPID 키 확인 중...");
+
             const publicKey =
-                process.env
-                    .NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
             if (!publicKey) {
                 throw new Error(
-                    "VAPID 공개키가 없습니다."
+                    "VAPID_PUBLIC_KEY_MISSING"
                 );
             }
+
+            setMessage("3/6 Service Worker 등록 중...");
 
             const registration =
                 await navigator.serviceWorker.register(
@@ -66,15 +76,18 @@ export function PushNotificationButton() {
 
             await navigator.serviceWorker.ready;
 
+            setMessage("4/6 알림 권한 요청 중...");
+
             const permission =
                 await Notification.requestPermission();
 
             if (permission !== "granted") {
-                setMessage(
-                    "알림 권한이 허용되지 않았어요."
+                throw new Error(
+                    `NOTIFICATION_PERMISSION_${permission}`
                 );
-                return;
             }
+
+            setMessage("5/6 푸시 구독 생성 중...");
 
             let subscription =
                 await registration.pushManager.getSubscription();
@@ -99,16 +112,17 @@ export function PushNotificationButton() {
                 !json.keys?.auth
             ) {
                 throw new Error(
-                    "푸시 구독 정보를 가져오지 못했습니다."
+                    "PUSH_SUBSCRIPTION_INVALID"
                 );
             }
+
+            setMessage("6/6 서버에 저장 중...");
 
             await savePushSubscription(
                 {
                     endpoint: json.endpoint,
                     keys: {
-                        p256dh:
-                        json.keys.p256dh,
+                        p256dh: json.keys.p256dh,
                         auth: json.keys.auth,
                     },
                 },
@@ -124,8 +138,13 @@ export function PushNotificationButton() {
                 error
             );
 
+            const detail =
+                error instanceof Error
+                    ? `${error.name}: ${error.message}`
+                    : String(error);
+
             setMessage(
-                "푸시 알림 설정에 실패했어요."
+                `설정 실패: ${detail}`
             );
         } finally {
             setLoading(false);
