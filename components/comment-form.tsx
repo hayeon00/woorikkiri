@@ -86,7 +86,7 @@ export function CommentForm({
                             ? "등록 중..."
                             : "댓글 남기기..."
                     }
-                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[12px] outline-none placeholder:text-gray-400 disabled:opacity-60"
+                    className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[16px] sm:text-[13px] outline-none placeholder:text-gray-400 disabled:opacity-60"
                 />
 
                 <button

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -560,7 +561,7 @@ async function Feed({
                 <aside className="hidden xl:block">
                     <div className="sticky top-0 flex h-screen flex-col px-3 py-8">
 
-                        <a
+                        <Link
                             href="/"
                             className="flex items-center gap-3 px-3"
                         >
@@ -571,19 +572,19 @@ async function Feed({
                             <span className="text-[20px] font-black tracking-[-0.04em]">
                                 우리끼리
                             </span>
-                        </a>
+                        </Link>
 
                         <nav className="mt-10 space-y-1">
 
-                            <a
+                            <Link
                                 href="/"
                                 className="flex h-12 items-center gap-3 rounded-[16px] bg-white px-4 text-[14px] font-black shadow-[0_4px_20px_rgba(0,0,0,0.035)]"
                             >
                                 <HomeIcon />
                                 피드
-                            </a>
+                            </Link>
 
-                            <a
+                            <Link
                                 href="/notifications"
                                 className="flex h-12 items-center justify-between rounded-[16px] px-4 text-[14px] font-bold text-gray-500 transition hover:bg-white"
                             >
@@ -601,15 +602,15 @@ async function Feed({
                                             : unreadNotificationCount}
                                     </span>
                                 )}
-                            </a>
+                            </Link>
 
-                            <a
+                            <Link
                                 href="/settings"
                                 className="flex h-12 items-center gap-3 rounded-[16px] px-4 text-[14px] font-bold text-gray-500 transition hover:bg-white"
                             >
                                 <UserIcon />
                                 내 정보
-                            </a>
+                            </Link>
                         </nav>
 
                         {memberships &&
@@ -639,7 +640,7 @@ async function Feed({
                                                     group.id;
 
                                                 return (
-                                                    <a
+                                                    <Link
                                                         key={
                                                             group.id
                                                         }
@@ -663,7 +664,7 @@ async function Feed({
                                                                 group.name
                                                             }
                                                         </span>
-                                                    </a>
+                                                    </Link>
                                                 );
                                             }
                                         )}
@@ -672,7 +673,7 @@ async function Feed({
                             )}
 
                         <div className="mt-auto px-3">
-                            <a
+                            <Link
                                 href="/settings"
                                 className="flex items-center gap-3 rounded-[18px] p-2 transition hover:bg-white"
                             >
@@ -700,7 +701,7 @@ async function Feed({
                                         내 정보 보기
                                     </p>
                                 </div>
-                            </a>
+                            </Link>
                         </div>
                     </div>
                 </aside>
@@ -742,7 +743,7 @@ async function Feed({
                             </div>
 
                             <div className="flex shrink-0 items-center gap-1">
-                                <a
+                                <Link
                                     href="/notifications"
                                     aria-label="알림"
                                     className="relative flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-black/[0.04]"
@@ -756,9 +757,9 @@ async function Feed({
                             : unreadNotificationCount}
                     </span>
                                     )}
-                                </a>
+                                </Link>
 
-                                <a
+                                <Link
                                     href="/settings"
                                     aria-label="내 정보"
                                     className="ml-1 block shrink-0"
@@ -774,7 +775,7 @@ async function Feed({
                                             <UserIcon />
                                         </div>
                                     )}
-                                </a>
+                                </Link>
                             </div>
                         </div>
 
@@ -859,12 +860,12 @@ async function Feed({
                                 참여해보세요.
                             </p>
 
-                            <a
+                            <Link
                                 href="/settings"
                                 className="mt-7 flex h-12 items-center justify-center rounded-full bg-gray-950 px-6 text-sm font-black text-white transition active:scale-95"
                             >
                                 공간 만들기
-                            </a>
+                            </Link>
                         </section>
                     )}
 
@@ -934,14 +935,14 @@ async function Feed({
                                         </div>
                                     </div>
 
-                                    <a
+                                    <Link
                                         href="/settings"
                                         className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-gray-100 px-3 text-[11px] font-bold text-gray-600 transition hover:bg-gray-200"
                                     >
                                         공간 관리
 
                                         <ChevronRightIcon />
-                                    </a>
+                                    </Link>
                                 </div>
                             </section>
 
@@ -1149,7 +1150,7 @@ async function Feed({
                     {/* 모바일/태블릿 하단 내비게이션 */}
                     <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1 sm:border-x xl:hidden">
 
-                        <a
+                        <Link
                             href="/"
                             aria-label="피드"
                             className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
@@ -1159,9 +1160,9 @@ async function Feed({
                             <span className="text-[9px] font-black">
                                 피드
                             </span>
-                        </a>
+                        </Link>
 
-                        <a
+                        <Link
                             href="/notifications"
                             aria-label="알림"
                             className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -1184,9 +1185,9 @@ async function Feed({
                             <span className="text-[9px] font-bold">
                                 알림
                             </span>
-                        </a>
+                        </Link>
 
-                        <a
+                        <Link
                             href="/settings"
                             aria-label="내 정보"
                             className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -1206,7 +1207,7 @@ async function Feed({
                             <span className="text-[9px] font-bold">
                                 내 정보
                             </span>
-                        </a>
+                        </Link>
                     </nav>
                 </div>
 
@@ -1283,12 +1284,12 @@ async function Feed({
                                     비공개 공간이에요.
                                 </p>
 
-                                <a
+                                <Link
                                     href="/settings"
                                     className="mt-5 flex h-10 items-center justify-center rounded-[14px] bg-gray-100 text-[11px] font-black text-gray-600 transition hover:bg-gray-200"
                                 >
                                     공간 관리
-                                </a>
+                                </Link>
                             </div>
                         )}
 

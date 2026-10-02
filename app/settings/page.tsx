@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { InviteLinkButton } from "@/components/invite-link-button";
@@ -41,10 +42,7 @@ async function SettingsContent() {
     if (myProfile?.avatar_url) {
         const { data } = await supabase.storage
             .from("avatars")
-            .createSignedUrl(
-                myProfile.avatar_url,
-                60 * 60
-            );
+            .createSignedUrl(myProfile.avatar_url, 60 * 60);
 
         myAvatarUrl = data?.signedUrl ?? null;
     }
@@ -89,12 +87,10 @@ async function SettingsContent() {
     const ownedGroups =
         memberships?.filter(
             (membership: any) =>
-                membership.groups?.owner_id ===
-                user.id
+                membership.groups?.owner_id === user.id
         ) ?? [];
 
-    const hasOwnedGroups =
-        ownedGroups.length > 0;
+    const hasOwnedGroups = ownedGroups.length > 0;
 
     return (
         <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] pb-28 text-gray-950">
@@ -114,12 +110,12 @@ async function SettingsContent() {
                         </h1>
                     </div>
 
-                    <a
+                    <Link
                         href="/"
                         className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold transition hover:bg-gray-50"
                     >
                         완료
-                    </a>
+                    </Link>
                 </div>
             </header>
 
@@ -207,7 +203,7 @@ async function SettingsContent() {
                                     defaultValue={
                                         myProfile?.nickname ?? ""
                                     }
-                                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm outline-none transition focus:border-gray-400"
+                                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
                                 />
 
                                 <button
@@ -264,8 +260,7 @@ async function SettingsContent() {
                                     }
 
                                     const isOwner =
-                                        group.owner_id ===
-                                        user.id;
+                                        group.owner_id === user.id;
 
                                     return (
                                         <details
@@ -277,9 +272,7 @@ async function SettingsContent() {
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex min-w-0 items-center gap-2">
                                                         <p className="truncate text-sm font-black">
-                                                            {
-                                                                group.name
-                                                            }
+                                                            {group.name}
                                                         </p>
 
                                                         <span
@@ -300,12 +293,12 @@ async function SettingsContent() {
                                                     </p>
                                                 </div>
 
-                                                <a
+                                                <Link
                                                     href={`/?group=${group.id}`}
                                                     className="shrink-0 rounded-full bg-gray-100 px-4 py-2 text-[11px] font-bold transition hover:bg-gray-200"
                                                 >
                                                     이동
-                                                </a>
+                                                </Link>
 
                                                 <span className="shrink-0 text-xs text-gray-300 transition-transform group-open:rotate-180">
                                                     ↓
@@ -322,9 +315,7 @@ async function SettingsContent() {
                                                         </p>
 
                                                         <p className="mt-1 truncate font-mono text-sm font-black tracking-widest text-gray-700">
-                                                            {
-                                                                group.invite_code
-                                                            }
+                                                            {group.invite_code}
                                                         </p>
                                                     </div>
 
@@ -363,13 +354,11 @@ async function SettingsContent() {
                                                                     type="text"
                                                                     name="name"
                                                                     required
-                                                                    maxLength={
-                                                                        30
-                                                                    }
+                                                                    maxLength={30}
                                                                     defaultValue={
                                                                         group.name
                                                                     }
-                                                                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-gray-400"
+                                                                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
                                                                 />
 
                                                                 <button
@@ -404,9 +393,7 @@ async function SettingsContent() {
                                                                 <p className="text-[10px] leading-5 text-gray-400">
                                                                     삭제하려면{" "}
                                                                     <strong className="text-gray-600">
-                                                                        {
-                                                                            group.name
-                                                                        }
+                                                                        {group.name}
                                                                     </strong>
                                                                     을(를)
                                                                     정확히
@@ -421,7 +408,7 @@ async function SettingsContent() {
                                                                     placeholder={
                                                                         group.name
                                                                     }
-                                                                    className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-red-300"
+                                                                    className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-red-300 sm:text-sm"
                                                                 />
 
                                                                 <button
@@ -436,9 +423,7 @@ async function SettingsContent() {
                                                     </div>
                                                 ) : (
                                                     <form
-                                                        action={
-                                                            leaveGroup
-                                                        }
+                                                        action={leaveGroup}
                                                         className="mt-5 border-t border-gray-200 pt-4"
                                                     >
                                                         <input
@@ -510,7 +495,7 @@ async function SettingsContent() {
                                 required
                                 maxLength={30}
                                 placeholder="공간 이름"
-                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-gray-400"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
                             />
 
                             <button
@@ -549,7 +534,7 @@ async function SettingsContent() {
                                 required
                                 maxLength={6}
                                 placeholder="ABC123"
-                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-mono text-sm uppercase tracking-widest outline-none transition focus:border-gray-400"
+                                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-mono text-[16px] uppercase tracking-widest outline-none transition focus:border-gray-400 sm:text-sm"
                             />
 
                             <button
@@ -586,9 +571,7 @@ async function SettingsContent() {
                             type="submit"
                             className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-bold transition hover:bg-gray-50"
                         >
-                            <span>
-                                로그아웃
-                            </span>
+                            <span>로그아웃</span>
 
                             <span className="text-lg font-light text-gray-300">
                                 ›
@@ -610,13 +593,12 @@ async function SettingsContent() {
 
                         <div className="border-t border-red-50 bg-red-50/60 p-4">
                             <p className="text-xs leading-5 text-gray-500">
-                                 계정을 탈퇴하면 다시
+                                계정을 탈퇴하면 다시
                                 로그인할 수 없습니다.
                                 이전에 작성한 게시물과
                                 댓글은 공간의 기록으로
                                 남으며, 작성자는
-                                &quot;탈퇴한
-                                사용자&quot;로
+                                &quot;탈퇴한 사용자&quot;로
                                 표시됩니다.
                             </p>
 
@@ -631,10 +613,7 @@ async function SettingsContent() {
                                         방장으로 관리 중인
                                         공간이{" "}
                                         <strong className="text-gray-600">
-                                            {
-                                                ownedGroups.length
-                                            }
-                                            개
+                                            {ownedGroups.length}개
                                         </strong>{" "}
                                         있습니다. 해당
                                         공간을 먼저 삭제한
@@ -648,8 +627,7 @@ async function SettingsContent() {
                                 >
                                     <label className="text-[11px] font-bold text-red-500">
                                         확인을 위해
-                                        &quot;계정
-                                        탈퇴&quot;를
+                                        &quot;계정 탈퇴&quot;를
                                         입력하세요.
                                     </label>
 
@@ -659,7 +637,7 @@ async function SettingsContent() {
                                         required
                                         autoComplete="off"
                                         placeholder="계정 탈퇴"
-                                        className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-3 text-sm outline-none transition focus:border-red-300"
+                                        className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-3 text-[16px] outline-none transition focus:border-red-300 sm:text-sm"
                                     />
 
                                     <button
@@ -684,8 +662,7 @@ async function SettingsContent() {
             ======================================== */}
             <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1">
 
-                {/* 피드 */}
-                <a
+                <Link
                     href="/"
                     aria-label="피드"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -695,10 +672,9 @@ async function SettingsContent() {
                     <span className="text-[9px] font-bold">
                         피드
                     </span>
-                </a>
+                </Link>
 
-                {/* 알림 */}
-                <a
+                <Link
                     href="/notifications"
                     aria-label="알림"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -708,10 +684,9 @@ async function SettingsContent() {
                     <span className="text-[9px] font-bold">
                         알림
                     </span>
-                </a>
+                </Link>
 
-                {/* 내 정보 */}
-                <a
+                <Link
                     href="/settings"
                     aria-label="내 정보"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
@@ -729,7 +704,7 @@ async function SettingsContent() {
                     <span className="text-[9px] font-black">
                         내 정보
                     </span>
-                </a>
+                </Link>
             </nav>
         </main>
     );

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { markNotificationsAsRead } from "../actions";
+import Link from "next/link";
 
 async function NotificationsContent() {
     const supabase = await createClient();
@@ -120,7 +121,7 @@ async function NotificationsContent() {
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-xl">
                 <div className="flex h-[76px] items-center px-4 sm:px-7">
 
-                    <a
+                    <Link
                         href="/"
                         aria-label="피드로 돌아가기"
                         className="mr-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-gray-100"
@@ -141,7 +142,7 @@ async function NotificationsContent() {
                                 strokeLinejoin="round"
                             />
                         </svg>
-                    </a>
+                    </Link>
 
                     <div>
                         <p className="text-[11px] font-semibold tracking-wide text-gray-400">
@@ -247,7 +248,7 @@ async function NotificationsContent() {
                                             : "/";
 
                                     return (
-                                        <a
+                                        <Link
                                             key={
                                                 notification.id
                                             }
@@ -348,7 +349,7 @@ async function NotificationsContent() {
                                                 </svg>
 
                                             </div>
-                                        </a>
+                                        </Link>
                                     );
                                 }
                             )}
@@ -360,13 +361,11 @@ async function NotificationsContent() {
             {/* ========================================
                 하단 메뉴
             ======================================== */}
-            {/* ========================================
-    하단 메뉴
-======================================== */}
+
             <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1">
 
                 {/* 피드 */}
-                <a
+                <Link
                     href="/"
                     aria-label="피드"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -376,10 +375,10 @@ async function NotificationsContent() {
                     <span className="text-[9px] font-bold">
             피드
         </span>
-                </a>
+                </Link>
 
                 {/* 알림 */}
-                <a
+                <Link
                     href="/notifications"
                     aria-label="알림"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-950"
@@ -389,10 +388,10 @@ async function NotificationsContent() {
                     <span className="text-[9px] font-black">
             알림
         </span>
-                </a>
+                </Link>
 
                 {/* 내 정보 */}
-                <a
+                <Link
                     href="/settings"
                     aria-label="내 정보"
                     className="flex h-[60px] flex-1 flex-col items-center justify-center gap-1 text-gray-400"
@@ -402,7 +401,7 @@ async function NotificationsContent() {
                     <span className="text-[9px] font-bold">
             내 정보
         </span>
-                </a>
+                </Link>
             </nav>
         </main>
     );
