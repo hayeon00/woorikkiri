@@ -111,7 +111,7 @@ async function SettingsContent() {
                     </div>
 
                     <Link
-                        href="/public"
+                        href="/"
                         className="rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-bold transition hover:bg-gray-50"
                     >
                         완료
@@ -294,7 +294,7 @@ async function SettingsContent() {
                                                 </div>
 
                                                 <Link
-                                                    href={`/public?group=${group.id}`}
+                                                    href={`/?group=${group.id}`}
                                                     className="shrink-0 rounded-full bg-gray-100 px-4 py-2 text-[11px] font-bold transition hover:bg-gray-200"
                                                 >
                                                     이동
