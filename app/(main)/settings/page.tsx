@@ -7,6 +7,7 @@ import { InviteLinkButton } from "@/components/invite-link-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { PushNotificationButton } from "@/components/push-notification-button";
+import { TestPushButton } from "@/components/test-push-button";
 
 import {
     logout,
@@ -619,6 +620,8 @@ async function SettingsContent() {
                     </p>
 
                     <PushNotificationButton />
+
+                    <TestPushButton />
                 </section>
 
                 {/* ========================================
