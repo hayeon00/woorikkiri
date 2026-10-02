@@ -188,8 +188,68 @@ export async function createPost(formData: FormData) {
         }
     }
 
+    // ========================================
+// 새 게시물 알림
+//
+// 같은 공간의 다른 멤버들에게
+// 새 게시물 알림을 보낸다.
+// 작성자 본인에게는 보내지 않는다.
+// ========================================
+
+    const {
+        data: groupMembers,
+        error: membersError,
+    } = await supabase
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId)
+        .neq("user_id", user.id);
+
+    if (membersError) {
+        console.error(
+            "게시물 알림 대상 조회 실패:",
+            membersError
+        );
+    } else if (
+        groupMembers &&
+        groupMembers.length > 0
+    ) {
+        const notificationRows =
+            groupMembers.map(
+                (member) => ({
+                    user_id:
+                    member.user_id,
+                    actor_id:
+                    user.id,
+                    type: "post",
+                    post_id:
+                    post.id,
+                })
+            );
+
+        const {
+            error: notificationError,
+        } = await supabase
+            .from("notifications")
+            .insert(
+                notificationRows
+            );
+
+        if (notificationError) {
+            console.error(
+                "게시물 알림 생성 실패:",
+                notificationError
+            );
+        }
+    }
+
     revalidatePath("/");
+
+
 }
+
+
+
 export async function toggleLike(postId: number) {
     const supabase = await createClient();
 

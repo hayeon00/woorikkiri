@@ -11,6 +11,7 @@ import { CommentList } from "@/components/comment-list";
 import { PostImageSlider } from "@/components/post-image-slider";
 import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
+import { ProfileImageViewer } from "@/components/profile-image-viewer";
 
 import {
     toggleLike,
@@ -678,12 +679,10 @@ async function Feed({
                                 className="flex items-center gap-3 rounded-[18px] p-2 transition hover:bg-white"
                             >
                                 {myAvatarUrl ? (
-                                    <img
-                                        src={
-                                            myAvatarUrl
-                                        }
-                                        alt="내 프로필"
-                                        className="h-9 w-9 rounded-full object-cover"
+                                    <ProfileImageViewer
+                                        src={myAvatarUrl}
+                                        alt="내 프로필 사진"
+                                        className="h-9 w-9 rounded-full border border-black/[0.05] object-cover"
                                     />
                                 ) : (
                                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-200 text-gray-500">
@@ -1016,12 +1015,10 @@ async function Feed({
                                                     <div className="flex min-w-0 items-center gap-3">
 
                                                         {post.author_avatar_url ? (
-                                                            <img
-                                                                src={
-                                                                    post.author_avatar_url
-                                                                }
-                                                                alt="작성자"
-                                                                className="h-10 w-10 shrink-0 rounded-full object-cover"
+                                                            <ProfileImageViewer
+                                                                src={post.author_avatar_url}
+                                                                alt={`${post.profiles?.nickname ?? "친구"} 프로필 사진`}
+                                                                className="h-10 w-10 rounded-full object-cover"
                                                             />
                                                         ) : (
                                                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
@@ -1030,12 +1027,19 @@ async function Feed({
                                                         )}
 
                                                         <div className="min-w-0">
-                                                            <p className="truncate text-[13px] font-black text-gray-950">
-                                                                {post
-                                                                        .profiles
-                                                                        ?.nickname ??
-                                                                    "탈퇴한 사용자"}
-                                                            </p>
+                                                            {post.user_id ? (
+                                                                <Link
+                                                                    href={`/profile/${post.user_id}`}
+                                                                    className="block truncate text-[13px] font-black text-gray-950 transition hover:text-gray-500"
+                                                                >
+                                                                    {post.profiles?.nickname ??
+                                                                        "사용자"}
+                                                                </Link>
+                                                            ) : (
+                                                                <p className="truncate text-[13px] font-black text-gray-500">
+                                                                    탈퇴한 사용자
+                                                                </p>
+                                                            )}
 
                                                             <time className="mt-0.5 block text-[10px] font-medium text-gray-400">
                                                                 {new Date(

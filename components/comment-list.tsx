@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { CommentDeleteButton } from "@/components/comment-delete-button";
+import { ProfileImageViewer } from "@/components/profile-image-viewer";
 
 type Comment = {
     id: number;
@@ -72,12 +74,13 @@ export function CommentList({
                             className="flex items-start gap-2.5"
                         >
                             {comment.avatar_url ? (
-                                <img
-                                    src={
-                                        comment.avatar_url
-                                    }
-                                    alt="댓글 작성자"
-                                    className="h-7 w-7 shrink-0 rounded-full object-cover"
+                                <ProfileImageViewer
+                                    src={comment.avatar_url}
+                                    alt={`${
+                                        comment.profiles?.nickname ??
+                                        "친구"
+                                    } 프로필 사진`}
+                                    className="h-7 w-7 rounded-full object-cover"
                                 />
                             ) : (
                                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
@@ -88,12 +91,19 @@ export function CommentList({
                             <div className="min-w-0 flex-1">
                                 <div>
                                     <div className="text-[12px] leading-5">
-                                        <span className="mr-2 font-black">
-                                            {comment
-                                                    .profiles
-                                                    ?.nickname ??
-                                                "탈퇴한 사용자"}
-                                        </span>
+                                        {comment.user_id ? (
+                                            <Link
+                                                href={`/profile/${comment.user_id}`}
+                                                className="mr-2 font-black transition hover:text-gray-500"
+                                            >
+                                                {comment.profiles?.nickname ??
+                                                    "사용자"}
+                                            </Link>
+                                        ) : (
+                                            <span className="mr-2 font-black text-gray-500">
+        탈퇴한 사용자
+    </span>
+                                        )}
 
                                         <span className="break-words text-gray-700">
                                             {

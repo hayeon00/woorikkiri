@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { BottomNav } from "@/components/bottom-nav";
 
 export default function MainLayout({
@@ -8,7 +10,10 @@ export default function MainLayout({
     return (
         <>
             {children}
-            <BottomNav />
+
+            <Suspense fallback={null}>
+                <BottomNav />
+            </Suspense>
         </>
     );
 }

@@ -122,7 +122,7 @@ async function NotificationsContent() {
                 <div className="flex h-[76px] items-center px-4 sm:px-7">
 
                     <Link
-                        href="/public"
+                        href="/"
                         aria-label="피드로 돌아가기"
                         className="mr-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition hover:bg-gray-100"
                     >
@@ -208,9 +208,9 @@ async function NotificationsContent() {
                             </h2>
 
                             <p className="mt-2 text-sm leading-6 text-gray-400">
-                                친구가 게시물에 좋아요를 누르거나
+                                친구가 새 게시물을 올리거나
                                 <br />
-                                댓글을 남기면 여기에 표시돼요.
+                                좋아요와 댓글을 남기면 여기에 표시돼요.
                             </p>
 
                         </section>
@@ -237,6 +237,14 @@ async function NotificationsContent() {
                                     const isLike =
                                         notification.type ===
                                         "like";
+
+                                    const isComment =
+                                        notification.type ===
+                                        "comment";
+
+                                    const isPost =
+                                        notification.type ===
+                                        "post";
 
                                     const groupId =
                                         notification.posts
@@ -281,7 +289,9 @@ async function NotificationsContent() {
                                                 <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-black text-[11px] text-white">
                                                     {isLike
                                                         ? "♥"
-                                                        : "●"}
+                                                        : isComment
+                                                            ? "●"
+                                                            : "＋"}
                                                 </div>
 
                                             </div>
@@ -298,7 +308,11 @@ async function NotificationsContent() {
 
                                                     {isLike
                                                         ? "님이 회원님의 게시물을 좋아합니다."
-                                                        : "님이 회원님의 게시물에 댓글을 남겼습니다."}
+                                                        : isComment
+                                                            ? "님이 회원님의 게시물에 댓글을 남겼습니다."
+                                                            : isPost
+                                                                ? "님이 새 게시물을 올렸어요."
+                                                                : "님의 새로운 활동이 있어요."}
                                                 </p>
 
                                                 <time className="mt-1 block text-[11px] text-gray-400">

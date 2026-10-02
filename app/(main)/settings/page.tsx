@@ -1,8 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 import { InviteLinkButton } from "@/components/invite-link-button";
+import { ProfileImageViewer } from "@/components/profile-image-viewer";
+import { AvatarEditor } from "@/components/avatar-editor";
 
 import {
     logout,
@@ -42,9 +45,13 @@ async function SettingsContent() {
     if (myProfile?.avatar_url) {
         const { data } = await supabase.storage
             .from("avatars")
-            .createSignedUrl(myProfile.avatar_url, 60 * 60);
+            .createSignedUrl(
+                myProfile.avatar_url,
+                60 * 60
+            );
 
-        myAvatarUrl = data?.signedUrl ?? null;
+        myAvatarUrl =
+            data?.signedUrl ?? null;
     }
 
     // ========================================
@@ -87,10 +94,12 @@ async function SettingsContent() {
     const ownedGroups =
         memberships?.filter(
             (membership: any) =>
-                membership.groups?.owner_id === user.id
+                membership.groups?.owner_id ===
+                user.id
         ) ?? [];
 
-    const hasOwnedGroups = ownedGroups.length > 0;
+    const hasOwnedGroups =
+        ownedGroups.length > 0;
 
     return (
         <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] pb-28 text-gray-950">
@@ -126,30 +135,49 @@ async function SettingsContent() {
                 ======================================== */}
                 <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
 
-                    <div className="flex items-center gap-4 p-5 sm:p-6">
-                        {myAvatarUrl ? (
-                            <img
-                                src={myAvatarUrl}
-                                alt="내 프로필 사진"
-                                className="h-16 w-16 shrink-0 rounded-full object-cover"
-                            />
-                        ) : (
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
-                                <UserIcon />
+                    <div className="p-5 sm:p-6">
+                        <div className="flex items-center gap-4">
+
+                            {myAvatarUrl ? (
+                                <ProfileImageViewer
+                                    src={myAvatarUrl}
+                                    alt="내 프로필 사진"
+                                    className="h-16 w-16 rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                                    <UserIcon />
+                                </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-[17px] font-black">
+                                    {myProfile?.nickname ??
+                                        "친구"}
+                                </p>
+
+                                <p className="mt-1 truncate text-xs text-gray-400">
+                                    {user.email}
+                                </p>
                             </div>
-                        )}
-
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-[17px] font-black">
-                                {myProfile?.nickname ?? "친구"}
-                            </p>
-
-                            <p className="mt-1 truncate text-xs text-gray-400">
-                                {user.email}
-                            </p>
                         </div>
+
+                        {/* 내 개인 피드 */}
+                        <Link
+                            href={`/profile/${user.id}`}
+                            className="mt-5 flex h-11 w-full items-center justify-between rounded-[14px] bg-gray-950 px-4 text-[12px] font-black text-white transition hover:bg-gray-800 active:scale-[0.99]"
+                        >
+                            <span>
+                                내 게시물 보기
+                            </span>
+
+                            <span className="text-lg font-light text-white/60">
+                                ›
+                            </span>
+                        </Link>
                     </div>
 
+                    {/* 프로필 수정 */}
                     <details className="group border-t border-gray-100">
                         <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4">
                             <span className="text-sm font-bold">
@@ -164,30 +192,15 @@ async function SettingsContent() {
                         <div className="border-t border-gray-100 bg-gray-50/70 px-5 pb-5 pt-4">
 
                             {/* 프로필 사진 */}
-                            <form action={updateAvatar}>
-                                <label className="text-[11px] font-bold text-gray-500">
-                                    프로필 사진
-                                </label>
-
-                                <input
-                                    type="file"
-                                    name="avatar"
-                                    accept="image/*"
-                                    required
-                                    className="mt-2 block w-full rounded-xl border border-gray-200 bg-white p-3 text-xs file:mr-3 file:rounded-full file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-[11px] file:font-bold"
-                                />
-
-                                <button
-                                    type="submit"
-                                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold transition hover:bg-gray-50"
-                                >
-                                    사진 변경
-                                </button>
-                            </form>
+                            <AvatarEditor
+                                updateAction={updateAvatar}
+                            />
 
                             {/* 닉네임 */}
                             <form
-                                action={updateNickname}
+                                action={
+                                    updateNickname
+                                }
                                 className="mt-5 border-t border-gray-200/70 pt-4"
                             >
                                 <label className="text-[11px] font-bold text-gray-500">
@@ -201,7 +214,8 @@ async function SettingsContent() {
                                     maxLength={20}
                                     required
                                     defaultValue={
-                                        myProfile?.nickname ?? ""
+                                        myProfile?.nickname ??
+                                        ""
                                     }
                                     className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
                                 />
@@ -234,37 +248,49 @@ async function SettingsContent() {
                         </div>
 
                         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
-                            {memberships?.length ?? 0}개
+                            {memberships?.length ??
+                                0}
+                            개
                         </span>
                     </div>
 
                     {!memberships?.length ? (
                         <div className="mx-5 mb-5 mt-2 rounded-2xl bg-gray-50 px-4 py-8 text-center">
                             <p className="text-sm font-bold">
-                                아직 참여한 공간이 없어요
+                                아직 참여한 공간이
+                                없어요
                             </p>
 
                             <p className="mt-1 text-xs text-gray-400">
-                                새 공간을 만들거나 초대코드로 참여해보세요.
+                                새 공간을 만들거나
+                                초대코드로
+                                참여해보세요.
                             </p>
                         </div>
                     ) : (
                         <div className="px-3 pb-3">
                             {memberships.map(
-                                (membership: any) => {
+                                (
+                                    membership: any
+                                ) => {
                                     const group =
                                         membership.groups;
 
-                                    if (!group) {
+                                    if (
+                                        !group
+                                    ) {
                                         return null;
                                     }
 
                                     const isOwner =
-                                        group.owner_id === user.id;
+                                        group.owner_id ===
+                                        user.id;
 
                                     return (
                                         <details
-                                            key={group.id}
+                                            key={
+                                                group.id
+                                            }
                                             className="group border-b border-gray-100 last:border-b-0"
                                         >
                                             <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl px-3 py-4 transition hover:bg-gray-50">
@@ -272,7 +298,9 @@ async function SettingsContent() {
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex min-w-0 items-center gap-2">
                                                         <p className="truncate text-sm font-black">
-                                                            {group.name}
+                                                            {
+                                                                group.name
+                                                            }
                                                         </p>
 
                                                         <span
@@ -289,7 +317,8 @@ async function SettingsContent() {
                                                     </div>
 
                                                     <p className="mt-1 text-[10px] text-gray-400">
-                                                        자세히 보기
+                                                        자세히
+                                                        보기
                                                     </p>
                                                 </div>
 
@@ -315,7 +344,9 @@ async function SettingsContent() {
                                                         </p>
 
                                                         <p className="mt-1 truncate font-mono text-sm font-black tracking-widest text-gray-700">
-                                                            {group.invite_code}
+                                                            {
+                                                                group.invite_code
+                                                            }
                                                         </p>
                                                     </div>
 
@@ -346,7 +377,9 @@ async function SettingsContent() {
                                                             />
 
                                                             <label className="text-[11px] font-bold text-gray-500">
-                                                                공간 이름 변경
+                                                                공간
+                                                                이름
+                                                                변경
                                                             </label>
 
                                                             <div className="mt-2 flex gap-2">
@@ -354,7 +387,9 @@ async function SettingsContent() {
                                                                     type="text"
                                                                     name="name"
                                                                     required
-                                                                    maxLength={30}
+                                                                    maxLength={
+                                                                        30
+                                                                    }
                                                                     defaultValue={
                                                                         group.name
                                                                     }
@@ -373,7 +408,8 @@ async function SettingsContent() {
                                                         {/* 공간 삭제 */}
                                                         <details className="mt-4 border-t border-gray-200 pt-4">
                                                             <summary className="cursor-pointer list-none text-[11px] font-bold text-red-400">
-                                                                공간 삭제
+                                                                공간
+                                                                삭제
                                                             </summary>
 
                                                             <form
@@ -393,7 +429,9 @@ async function SettingsContent() {
                                                                 <p className="text-[10px] leading-5 text-gray-400">
                                                                     삭제하려면{" "}
                                                                     <strong className="text-gray-600">
-                                                                        {group.name}
+                                                                        {
+                                                                            group.name
+                                                                        }
                                                                     </strong>
                                                                     을(를)
                                                                     정확히
@@ -415,15 +453,19 @@ async function SettingsContent() {
                                                                     type="submit"
                                                                     className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-bold text-red-500 transition hover:bg-red-50"
                                                                 >
-                                                                    이 공간
-                                                                    영구 삭제
+                                                                    이
+                                                                    공간
+                                                                    영구
+                                                                    삭제
                                                                 </button>
                                                             </form>
                                                         </details>
                                                     </div>
                                                 ) : (
                                                     <form
-                                                        action={leaveGroup}
+                                                        action={
+                                                            leaveGroup
+                                                        }
                                                         className="mt-5 border-t border-gray-200 pt-4"
                                                     >
                                                         <input
@@ -438,14 +480,18 @@ async function SettingsContent() {
                                                             type="submit"
                                                             className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-xs font-bold text-red-500 transition hover:bg-red-50"
                                                         >
-                                                            이 공간에서
+                                                            이
+                                                            공간에서
                                                             나가기
                                                         </button>
 
                                                         <p className="mt-2 text-center text-[10px] leading-4 text-gray-400">
-                                                            나가도 이전에
-                                                            작성한 게시물과
-                                                            댓글은 남습니다.
+                                                            나가도
+                                                            이전에
+                                                            작성한
+                                                            게시물과
+                                                            댓글은
+                                                            남습니다.
                                                         </p>
                                                     </form>
                                                 )}
@@ -486,14 +532,18 @@ async function SettingsContent() {
                         </summary>
 
                         <form
-                            action={createGroup}
+                            action={
+                                createGroup
+                            }
                             className="border-t border-gray-100 bg-gray-50/70 p-4"
                         >
                             <input
                                 type="text"
                                 name="name"
                                 required
-                                maxLength={30}
+                                maxLength={
+                                    30
+                                }
                                 placeholder="공간 이름"
                                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
                             />
@@ -511,7 +561,8 @@ async function SettingsContent() {
                     <details className="group border-t border-gray-100">
                         <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4">
                             <span className="text-sm font-bold">
-                                초대코드로 참여하기
+                                초대코드로
+                                참여하기
                             </span>
 
                             <span className="text-gray-300 transition-transform group-open:rotate-180">
@@ -520,19 +571,24 @@ async function SettingsContent() {
                         </summary>
 
                         <form
-                            action={joinGroup}
+                            action={
+                                joinGroup
+                            }
                             className="border-t border-gray-100 bg-gray-50/70 p-4"
                         >
                             <p className="mb-2 text-[11px] leading-5 text-gray-400">
-                                친구에게 받은 6자리
-                                초대코드를 입력하세요.
+                                친구에게 받은
+                                6자리 초대코드를
+                                입력하세요.
                             </p>
 
                             <input
                                 type="text"
                                 name="invite_code"
                                 required
-                                maxLength={6}
+                                maxLength={
+                                    6
+                                }
                                 placeholder="ABC123"
                                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 font-mono text-[16px] uppercase tracking-widest outline-none transition focus:border-gray-400 sm:text-sm"
                             />
@@ -564,14 +620,18 @@ async function SettingsContent() {
 
                     {/* 로그아웃 */}
                     <form
-                        action={logout}
+                        action={
+                            logout
+                        }
                         className="border-t border-gray-100"
                     >
                         <button
                             type="submit"
                             className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-bold transition hover:bg-gray-50"
                         >
-                            <span>로그아웃</span>
+                            <span>
+                                로그아웃
+                            </span>
 
                             <span className="text-lg font-light text-gray-300">
                                 ›
@@ -593,41 +653,52 @@ async function SettingsContent() {
 
                         <div className="border-t border-red-50 bg-red-50/60 p-4">
                             <p className="text-xs leading-5 text-gray-500">
-                                계정을 탈퇴하면 다시
-                                로그인할 수 없습니다.
-                                이전에 작성한 게시물과
-                                댓글은 공간의 기록으로
-                                남으며, 작성자는
-                                &quot;탈퇴한 사용자&quot;로
+                                계정을 탈퇴하면
+                                다시 로그인할 수
+                                없습니다. 이전에
+                                작성한 게시물과
+                                댓글은 공간의
+                                기록으로 남으며,
+                                작성자는
+                                &quot;탈퇴한
+                                사용자&quot;로
                                 표시됩니다.
                             </p>
 
                             {hasOwnedGroups ? (
                                 <div className="mt-3 rounded-xl bg-white p-3">
                                     <p className="text-xs font-bold text-red-500">
-                                        현재 계정을 탈퇴할
-                                        수 없습니다.
+                                        현재 계정을
+                                        탈퇴할 수
+                                        없습니다.
                                     </p>
 
                                     <p className="mt-1 text-[11px] leading-5 text-gray-400">
-                                        방장으로 관리 중인
-                                        공간이{" "}
+                                        방장으로 관리
+                                        중인 공간이{" "}
                                         <strong className="text-gray-600">
-                                            {ownedGroups.length}개
+                                            {
+                                                ownedGroups.length
+                                            }
+                                            개
                                         </strong>{" "}
                                         있습니다. 해당
-                                        공간을 먼저 삭제한
-                                        뒤 탈퇴해주세요.
+                                        공간을 먼저
+                                        삭제한 뒤
+                                        탈퇴해주세요.
                                     </p>
                                 </div>
                             ) : (
                                 <form
-                                    action={deleteAccount}
+                                    action={
+                                        deleteAccount
+                                    }
                                     className="mt-3"
                                 >
                                     <label className="text-[11px] font-bold text-red-500">
                                         확인을 위해
-                                        &quot;계정 탈퇴&quot;를
+                                        &quot;계정
+                                        탈퇴&quot;를
                                         입력하세요.
                                     </label>
 
@@ -644,7 +715,8 @@ async function SettingsContent() {
                                         type="submit"
                                         className="mt-2 w-full rounded-xl bg-red-500 px-4 py-3 text-sm font-black text-white transition hover:bg-red-600"
                                     >
-                                        계정 영구 탈퇴
+                                        계정 영구
+                                        탈퇴
                                     </button>
                                 </form>
                             )}
@@ -656,7 +728,6 @@ async function SettingsContent() {
                     WOORIKKIRI
                 </p>
             </div>
-
         </main>
     );
 }
@@ -664,61 +735,6 @@ async function SettingsContent() {
 // ========================================
 // 아이콘
 // ========================================
-
-function HomeIcon() {
-    return (
-        <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="m3 11 9-8 9 8"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-
-            <path
-                d="M5 10v10h14V10M9 20v-6h6v6"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
-function BellIcon() {
-    return (
-        <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-
-            <path
-                d="M10 21h4"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-            />
-        </svg>
-    );
-}
 
 function UserIcon() {
     return (
