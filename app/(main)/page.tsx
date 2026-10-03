@@ -12,6 +12,9 @@ import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { PushOnboarding } from "@/components/push-onboarding";
+import {
+    NotificationTarget,
+} from "@/components/notification-target";
 
 import {
     toggleLike,
@@ -26,6 +29,8 @@ async function Feed({
                     }: {
     searchParams: Promise<{
         group?: string;
+        post?: string;
+        comment?: string;
     }>;
 }) {
     const supabase = await createClient();
@@ -556,6 +561,9 @@ async function Feed({
 
     return (
         <main className="min-h-screen bg-[#f6f6f4] text-[#111]">
+
+            <NotificationTarget />
+
             {currentGroup && (
                 <FeedRealtime
                     groupId={currentGroup.id}
@@ -1592,6 +1600,8 @@ export default function Home({
                              }: {
     searchParams: Promise<{
         group?: string;
+        post?: string;
+        comment?: string;
     }>;
 }) {
     return (

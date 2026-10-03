@@ -14,9 +14,7 @@ async function NotificationsContent() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-        redirect(
-            "/auth/login"
-        );
+        redirect("/auth/login");
     }
 
     // ========================================
@@ -53,14 +51,11 @@ async function NotificationsContent() {
         .order(
             "created_at",
             {
-                ascending:
-                    false,
+                ascending: false,
             }
         );
 
-    if (
-        notificationsError
-    ) {
+    if (notificationsError) {
         console.error(
             "알림 조회 실패:",
             notificationsError
@@ -73,9 +68,7 @@ async function NotificationsContent() {
 
     const unreadCount =
         notifications?.filter(
-            (
-                notification: any
-            ) =>
+            (notification: any) =>
                 !notification.is_read
         ).length ?? 0;
 
@@ -90,8 +83,7 @@ async function NotificationsContent() {
     const notificationsWithAvatars =
         await Promise.all(
             (
-                notifications ??
-                []
+                notifications ?? []
             ).map(
                 async (
                     notification: any
@@ -116,8 +108,7 @@ async function NotificationsContent() {
                                     notification
                                         .profiles
                                         .avatar_url,
-                                    60 *
-                                    60
+                                    60 * 60
                                 );
 
                         avatarUrl =
@@ -189,15 +180,13 @@ async function NotificationsContent() {
                             </p>
                         </div>
 
-                        {unreadCount >
-                            0 && (
-                                <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-black px-3 text-sm font-black text-white">
-                                    {unreadCount >
-                                    99
-                                        ? "99+"
-                                        : unreadCount}
-                                </div>
-                            )}
+                        {unreadCount > 0 && (
+                            <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-black px-3 text-sm font-black text-white">
+                                {unreadCount > 99
+                                    ? "99+"
+                                    : unreadCount}
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -209,8 +198,7 @@ async function NotificationsContent() {
                             </div>
 
                             <h2 className="mt-5 text-lg font-black">
-                                아직 알림이
-                                없어요
+                                아직 알림이 없어요
                             </h2>
 
                             <p className="mt-2 text-sm leading-6 text-gray-400">
@@ -246,10 +234,13 @@ async function NotificationsContent() {
                                             .posts
                                             ?.group_id;
 
-                                    const postUrl =
-                                        groupId
-                                            ? `/?group=${groupId}#post-${notification.post_id}`
-                                            : "/";
+                                    const targetUrl =
+                                        buildNotificationUrl(
+                                            groupId,
+                                            notification.post_id,
+                                            notification.comment_id,
+                                            type
+                                        );
 
                                     return (
                                         <Link
@@ -257,11 +248,10 @@ async function NotificationsContent() {
                                                 notification.id
                                             }
                                             href={
-                                                postUrl
+                                                targetUrl
                                             }
                                             className={
-                                                index ===
-                                                0
+                                                index === 0
                                                     ? "group flex gap-3.5 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
                                                     : "group flex gap-3.5 border-t border-gray-100 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
                                             }
@@ -347,6 +337,62 @@ async function NotificationsContent() {
 }
 
 // ========================================
+// 알림 이동 URL
+// ========================================
+
+function buildNotificationUrl(
+    groupId:
+        | number
+        | null
+        | undefined,
+    postId:
+        | number
+        | null
+        | undefined,
+    commentId:
+        | number
+        | null
+        | undefined,
+    type: string
+) {
+    if (
+        !groupId ||
+        !postId
+    ) {
+        return "/";
+    }
+
+    const params =
+        new URLSearchParams();
+
+    params.set(
+        "group",
+        String(groupId)
+    );
+
+    params.set(
+        "post",
+        String(postId)
+    );
+
+    if (
+        (
+            type === "comment" ||
+            type === "reply" ||
+            type === "mention"
+        ) &&
+        commentId
+    ) {
+        params.set(
+            "comment",
+            String(commentId)
+        );
+    }
+
+    return `/?${params.toString()}`;
+}
+
+// ========================================
 // 알림 문구
 // ========================================
 
@@ -404,8 +450,6 @@ function getNotificationIcon(
 
 // ========================================
 // 날짜
-// 서버/브라우저에서 같은 결과가 나오도록
-// 고정된 숫자 형식 사용
 // ========================================
 
 function formatNotificationDate(
@@ -425,10 +469,13 @@ function formatNotificationDate(
                     "numeric",
                 minute:
                     "2-digit",
-                hour12: false,
+                hour12:
+                    false,
             }
         ).formatToParts(
-            new Date(dateString)
+            new Date(
+                dateString
+            )
         );
 
     const getPart = (
@@ -436,10 +483,19 @@ function formatNotificationDate(
     ) =>
         parts.find(
             (part) =>
-                part.type === type
+                part.type ===
+                type
         )?.value ?? "";
 
-    return `${getPart("month")}. ${getPart("day")}. ${getPart("hour")}:${getPart("minute")}`;
+    return `${getPart(
+        "month"
+    )}. ${getPart(
+        "day"
+    )}. ${getPart(
+        "hour"
+    )}:${getPart(
+        "minute"
+    )}`;
 }
 
 export default function NotificationsPage() {
@@ -449,13 +505,9 @@ export default function NotificationsPage() {
                 <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] px-4 py-8">
                     <div className="animate-pulse">
                         <div className="h-4 w-16 rounded bg-gray-200" />
-
                         <div className="mt-3 h-7 w-24 rounded bg-gray-200" />
-
                         <div className="mt-8 h-32 rounded-[26px] bg-gray-100" />
-
                         <div className="mt-4 h-24 rounded-[26px] bg-gray-100" />
-
                         <div className="mt-3 h-24 rounded-[26px] bg-gray-100" />
                     </div>
                 </main>

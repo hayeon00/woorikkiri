@@ -3,8 +3,10 @@
 import Link from "next/link";
 import {
     ReactNode,
+    useEffect,
     useState,
 } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { CommentDeleteButton } from "@/components/comment-delete-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
@@ -57,6 +59,16 @@ export function CommentList({
                                 deleteAction,
                                 onReply,
                             }: CommentListProps) {
+    const searchParams =
+        useSearchParams();
+
+    const targetCommentId =
+        Number(
+            searchParams.get(
+                "comment"
+            )
+        );
+
     const [
         isExpanded,
         setIsExpanded,
@@ -80,6 +92,59 @@ export function CommentList({
                 comment.parent_id ===
                 null
         );
+
+    // ========================================
+    // 알림 대상 댓글이 숨겨져 있으면
+    // 자동으로 댓글 전체 펼치기
+    // ========================================
+
+    useEffect(() => {
+        if (
+            !Number.isInteger(
+                targetCommentId
+            ) ||
+            targetCommentId <= 0
+        ) {
+            return;
+        }
+
+        const targetComment =
+            sortedComments.find(
+                (comment) =>
+                    comment.id ===
+                    targetCommentId
+            );
+
+        if (!targetComment) {
+            return;
+        }
+
+        // 답글이라면 부모 댓글을 찾고,
+        // 일반 댓글이면 자기 자신이 루트 댓글
+        const targetRootId =
+            targetComment.parent_id ??
+            targetComment.id;
+
+        const targetRootIndex =
+            rootComments.findIndex(
+                (comment) =>
+                    comment.id ===
+                    targetRootId
+            );
+
+        // 처음 3개 이후에 있는 댓글이면
+        // 자동으로 전체 댓글 펼치기
+        if (
+            targetRootIndex >=
+            INITIAL_THREAD_COUNT
+        ) {
+            setIsExpanded(true);
+        }
+    }, [
+        targetCommentId,
+        sortedComments,
+        rootComments,
+    ]);
 
     const visibleRoots =
         isExpanded
@@ -215,115 +280,122 @@ function CommentItem({
     isReply?: boolean;
 }) {
     return (
-        <div className="flex items-start gap-2.5">
-            {/* ========================================
-                프로필 사진
-            ======================================== */}
-
-            {comment.avatar_url ? (
-                <ProfileImageViewer
-                    src={
-                        comment.avatar_url
-                    }
-                    alt={`${
-                        comment.profiles
-                            ?.nickname ??
-                        "친구"
-                    } 프로필 사진`}
-                    className={
-                        isReply
-                            ? "h-6 w-6 rounded-full object-cover"
-                            : "h-7 w-7 rounded-full object-cover"
-                    }
-                />
-            ) : (
-                <div
-                    className={
-                        isReply
-                            ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
-                            : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
-                    }
-                >
-                    <UserIcon />
-                </div>
-            )}
-
-            <div className="min-w-0 flex-1">
+        <div
+            id={`comment-${comment.id}`}
+            className="scroll-mt-28 rounded-xl transition"
+        >
+            <div className="flex items-start gap-2.5">
                 {/* ========================================
-                    닉네임 + 댓글
+                    프로필 사진
                 ======================================== */}
 
-                <div className="text-[12px] leading-5">
-                    {comment.user_id ? (
-                        <Link
-                            href={`/profile/${comment.user_id}`}
-                            className="mr-2 font-black transition hover:text-gray-500"
-                        >
-                            {comment.profiles
-                                    ?.nickname ??
-                                "사용자"}
-                        </Link>
-                    ) : (
-                        <span className="mr-2 font-black text-gray-500">
-                            탈퇴한 사용자
-                        </span>
-                    )}
-
-                    <span className="break-words text-gray-700">
-                        {renderCommentContent(
-                            comment.content,
-                            comment.mentions ?? [],
-                            comment.replyToUser ?? null
-                        )}
-                    </span>
-                </div>
-
-                {/* ========================================
-                    시간 + 답글
-                ======================================== */}
-
-                <div className="mt-0.5 flex items-center gap-2.5">
-                    <time
-                        className="text-[9px] font-medium text-gray-400"
-                        dateTime={
-                            comment.created_at
+                {comment.avatar_url ? (
+                    <ProfileImageViewer
+                        src={
+                            comment.avatar_url
+                        }
+                        alt={`${
+                            comment.profiles
+                                ?.nickname ??
+                            "친구"
+                        } 프로필 사진`}
+                        className={
+                            isReply
+                                ? "h-6 w-6 rounded-full object-cover"
+                                : "h-7 w-7 rounded-full object-cover"
+                        }
+                    />
+                ) : (
+                    <div
+                        className={
+                            isReply
+                                ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
+                                : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
                         }
                     >
-                        {formatCommentDate(
-                            comment.created_at
+                        <UserIcon />
+                    </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                    {/* ========================================
+                        닉네임 + 댓글
+                    ======================================== */}
+
+                    <div className="text-[12px] leading-5">
+                        {comment.user_id ? (
+                            <Link
+                                href={`/profile/${comment.user_id}`}
+                                className="mr-2 font-black transition hover:text-gray-500"
+                            >
+                                {comment.profiles
+                                        ?.nickname ??
+                                    "사용자"}
+                            </Link>
+                        ) : (
+                            <span className="mr-2 font-black text-gray-500">
+                                탈퇴한 사용자
+                            </span>
                         )}
-                    </time>
 
-                    {comment.user_id && (
-                        <button
-                            type="button"
-                            onClick={() =>
-                                onReply(
-                                    comment
-                                )
+                        <span className="break-words text-gray-700">
+                            {renderCommentContent(
+                                comment.content,
+                                comment.mentions ??
+                                [],
+                                comment.replyToUser ??
+                                null
+                            )}
+                        </span>
+                    </div>
+
+                    {/* ========================================
+                        시간 + 답글
+                    ======================================== */}
+
+                    <div className="mt-0.5 flex items-center gap-2.5">
+                        <time
+                            className="text-[9px] font-medium text-gray-400"
+                            dateTime={
+                                comment.created_at
                             }
-                            className="text-[9px] font-bold text-gray-400 transition hover:text-gray-700"
                         >
-                            답글
-                        </button>
-                    )}
+                            {formatCommentDate(
+                                comment.created_at
+                            )}
+                        </time>
+
+                        {comment.user_id && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    onReply(
+                                        comment
+                                    )
+                                }
+                                className="text-[9px] font-bold text-gray-400 transition hover:text-gray-700"
+                            >
+                                답글
+                            </button>
+                        )}
+                    </div>
+
+                    {/* ========================================
+                        삭제
+                    ======================================== */}
+
+                    {comment.user_id ===
+                        currentUserId && (
+                            <CommentDeleteButton
+                                commentId={
+                                    comment.id
+                                }
+                                deleteAction={
+                                    deleteAction
+                                }
+                            />
+                        )}
                 </div>
-
-                {/* ========================================
-                    삭제
-                ======================================== */}
-
-                {comment.user_id ===
-                    currentUserId && (
-                        <CommentDeleteButton
-                            commentId={
-                                comment.id
-                            }
-                            deleteAction={
-                                deleteAction
-                            }
-                        />
-                    )}
             </div>
         </div>
     );
@@ -332,8 +404,10 @@ function CommentItem({
 // ========================================
 // 댓글 내용
 //
-// @닉네임 부분만 파란색 표시
+// 실제 멘션 / 답글 대상의 @닉네임만
+// 프로필 링크로 표시
 // ========================================
+
 function renderCommentContent(
     content: string,
     mentions: {
@@ -393,17 +467,20 @@ function renderCommentContent(
             a.nickname.length
     );
 
-    const result: ReactNode[] = [];
+    const result: ReactNode[] =
+        [];
 
     let remaining =
         content;
 
-    let keyIndex = 0;
+    let keyIndex =
+        0;
 
     while (
         remaining.length > 0
         ) {
-        let earliestIndex = -1;
+        let earliestIndex =
+            -1;
 
         let matchedUser:
             | {
@@ -427,7 +504,8 @@ function renderCommentContent(
             if (
                 index !== -1 &&
                 (
-                    earliestIndex === -1 ||
+                    earliestIndex ===
+                    -1 ||
                     index <
                     earliestIndex
                 )
@@ -501,11 +579,18 @@ function renderCommentContent(
 
     return result;
 }
+
+// ========================================
+// 댓글 날짜
+// ========================================
+
 function formatCommentDate(
     dateString: string
 ) {
     const date =
-        new Date(dateString);
+        new Date(
+            dateString
+        );
 
     const parts =
         new Intl.DateTimeFormat(
@@ -521,32 +606,48 @@ function formatCommentDate(
                     "numeric",
                 minute:
                     "2-digit",
-                hour12: false,
+                hour12:
+                    false,
             }
-        ).formatToParts(date);
+        ).formatToParts(
+            date
+        );
 
     const getPart = (
         type: Intl.DateTimeFormatPartTypes
     ) =>
         parts.find(
             (part) =>
-                part.type === type
+                part.type ===
+                type
         )?.value ?? "";
 
     const month =
-        getPart("month");
+        getPart(
+            "month"
+        );
 
     const day =
-        getPart("day");
+        getPart(
+            "day"
+        );
 
     const hour =
-        getPart("hour");
+        getPart(
+            "hour"
+        );
 
     const minute =
-        getPart("minute");
+        getPart(
+            "minute"
+        );
 
     return `${month}. ${day}. ${hour}:${minute}`;
 }
+
+// ========================================
+// 아이콘
+// ========================================
 
 function UserIcon() {
     return (

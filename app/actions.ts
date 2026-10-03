@@ -252,7 +252,7 @@ export async function createPost(formData: FormData) {
                 {
                     title: "우리끼리",
                     body: "새 게시물이 올라왔어요.",
-                    url: `/?group=${groupId}#post-${post.id}`,
+                    url: `/?group=${groupId}&post=${post.id}`,
                 }
             );
         } catch (pushError) {
@@ -492,8 +492,7 @@ export async function toggleLike(
                         body:
                             "내 게시물에 좋아요가 달렸어요. ❤️",
 
-                        url:
-                            `/?group=${post.group_id}#post-${postId}`,
+                        url: `/?group=${post.group_id}&post=${post.id}`,
                     }
                 );
             } catch (
@@ -964,7 +963,7 @@ export async function createComment(
             );
 
     const pushUrl =
-        `/?group=${post.group_id}#post-${postId}`;
+        `/?group=${post.group_id}&post=${postId}&comment=${comment.id}`;
 
     try {
         if (
