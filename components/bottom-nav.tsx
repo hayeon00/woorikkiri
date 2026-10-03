@@ -3,18 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function BottomNav() {
-    const pathname = usePathname();
+type BottomNavProps = {
+    currentUserId: string;
+};
 
-    const isFeed = pathname === "/";
+export function BottomNav({
+                              currentUserId,
+                          }: BottomNavProps) {
+    const pathname =
+        usePathname();
+
+    const isFeed =
+        pathname === "/";
+
+    const isMyFeed =
+        pathname ===
+        `/profile/${currentUserId}`;
+
     const isNotifications =
-        pathname.startsWith("/notifications");
+        pathname.startsWith(
+            "/notifications"
+        );
+
     const isSettings =
-        pathname.startsWith("/settings");
+        pathname.startsWith(
+            "/settings"
+        );
 
     return (
-        <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-4 pb-[env(safe-area-inset-bottom)] pt-1">
+        <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-1">
 
+            {/* 피드 */}
             <Link
                 href="/"
                 aria-label="피드"
@@ -37,6 +56,30 @@ export function BottomNav() {
                 </span>
             </Link>
 
+            {/* 내 피드 */}
+            <Link
+                href={`/profile/${currentUserId}`}
+                aria-label="내 피드"
+                className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
+                    isMyFeed
+                        ? "text-gray-950"
+                        : "text-gray-400"
+                }`}
+            >
+                <GridIcon />
+
+                <span
+                    className={
+                        isMyFeed
+                            ? "text-[9px] font-black"
+                            : "text-[9px] font-bold"
+                    }
+                >
+                    내 피드
+                </span>
+            </Link>
+
+            {/* 알림 */}
             <Link
                 href="/notifications"
                 aria-label="알림"
@@ -59,6 +102,7 @@ export function BottomNav() {
                 </span>
             </Link>
 
+            {/* 내 정보 */}
             <Link
                 href="/settings"
                 aria-label="내 정보"
@@ -107,6 +151,58 @@ function HomeIcon() {
                 strokeWidth="1.9"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function GridIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <rect
+                x="3"
+                y="3"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="14"
+                y="3"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="3"
+                y="14"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="14"
+                y="14"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
             />
         </svg>
     );

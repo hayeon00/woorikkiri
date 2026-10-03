@@ -1,18 +1,22 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { markNotificationsAsRead } from "../../actions";
 import Link from "next/link";
 
+import { createClient } from "@/lib/supabase/server";
+import { markNotificationsAsRead } from "../../actions";
+
 async function NotificationsContent() {
-    const supabase = await createClient();
+    const supabase =
+        await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-        redirect("/auth/login");
+        redirect(
+            "/auth/login"
+        );
     }
 
     // ========================================
@@ -42,12 +46,21 @@ async function NotificationsContent() {
                 group_id
             )
         `)
-        .eq("user_id", user.id)
-        .order("created_at", {
-            ascending: false,
-        });
+        .eq(
+            "user_id",
+            user.id
+        )
+        .order(
+            "created_at",
+            {
+                ascending:
+                    false,
+            }
+        );
 
-    if (notificationsError) {
+    if (
+        notificationsError
+    ) {
         console.error(
             "알림 조회 실패:",
             notificationsError
@@ -55,47 +68,56 @@ async function NotificationsContent() {
     }
 
     // ========================================
-    // 페이지 진입 당시 읽지 않은 알림 개수
+    // 읽지 않은 알림
     // ========================================
 
     const unreadCount =
         notifications?.filter(
-            (notification: any) =>
+            (
+                notification: any
+            ) =>
                 !notification.is_read
         ).length ?? 0;
-
-    // ========================================
-    // 알림 읽음 처리
-    // ========================================
 
     if (unreadCount > 0) {
         await markNotificationsAsRead();
     }
 
     // ========================================
-    // 상대방 프로필 사진 Signed URL
+    // 프로필 사진 Signed URL
     // ========================================
 
     const notificationsWithAvatars =
         await Promise.all(
-            (notifications ?? []).map(
-                async (notification: any) => {
+            (
+                notifications ??
+                []
+            ).map(
+                async (
+                    notification: any
+                ) => {
                     let avatarUrl:
                         | string
                         | null = null;
 
                     if (
-                        notification.profiles
+                        notification
+                            .profiles
                             ?.avatar_url
                     ) {
-                        const { data } =
+                        const {
+                            data,
+                        } =
                             await supabase.storage
-                                .from("avatars")
+                                .from(
+                                    "avatars"
+                                )
                                 .createSignedUrl(
                                     notification
                                         .profiles
                                         .avatar_url,
-                                    60 * 60
+                                    60 *
+                                    60
                                 );
 
                         avatarUrl =
@@ -114,13 +136,8 @@ async function NotificationsContent() {
 
     return (
         <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] pb-28 text-gray-950">
-
-            {/* ========================================
-                HEADER
-            ======================================== */}
             <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 backdrop-blur-xl">
                 <div className="flex h-[76px] items-center px-4 sm:px-7">
-
                     <Link
                         href="/"
                         aria-label="피드로 돌아가기"
@@ -131,7 +148,6 @@ async function NotificationsContent() {
                             height="22"
                             viewBox="0 0 24 24"
                             fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
                             aria-hidden="true"
                         >
                             <path
@@ -153,24 +169,16 @@ async function NotificationsContent() {
                             알림
                         </h1>
                     </div>
-
                 </div>
             </header>
 
-            {/* ========================================
-                CONTENT
-            ======================================== */}
             <div className="px-3 pt-4 sm:px-6 sm:pt-6">
-
-                {/* 알림 요약 */}
                 <section className="mb-4 rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-6">
-
                     <p className="text-[10px] font-bold tracking-wider text-gray-400">
                         NOTIFICATIONS
                     </p>
 
                     <div className="mt-1 flex items-end justify-between gap-4">
-
                         <div>
                             <h2 className="text-xl font-black tracking-tight">
                                 새로운 소식
@@ -181,48 +189,44 @@ async function NotificationsContent() {
                             </p>
                         </div>
 
-                        {unreadCount > 0 && (
-                            <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-black px-3 text-sm font-black text-white">
-                                {unreadCount > 99
-                                    ? "99+"
-                                    : unreadCount}
-                            </div>
-                        )}
-
+                        {unreadCount >
+                            0 && (
+                                <div className="flex h-10 min-w-10 items-center justify-center rounded-full bg-black px-3 text-sm font-black text-white">
+                                    {unreadCount >
+                                    99
+                                        ? "99+"
+                                        : unreadCount}
+                                </div>
+                            )}
                     </div>
                 </section>
 
-                {/* ========================================
-                    알림 없음
-                ======================================== */}
                 {notificationsWithAvatars.length ===
                     0 && (
                         <section className="rounded-[26px] bg-white px-5 py-20 text-center shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
-
                             <div className="text-4xl">
                                 ♡
                             </div>
 
                             <h2 className="mt-5 text-lg font-black">
-                                아직 알림이 없어요
+                                아직 알림이
+                                없어요
                             </h2>
 
                             <p className="mt-2 text-sm leading-6 text-gray-400">
-                                친구가 새 게시물을 올리거나
+                                친구가 새 게시물을
+                                올리거나
                                 <br />
-                                좋아요와 댓글을 남기면 여기에 표시돼요.
+                                좋아요와 댓글을
+                                남기면 여기에
+                                표시돼요.
                             </p>
-
                         </section>
                     )}
 
-                {/* ========================================
-                    알림 목록
-                ======================================== */}
                 {notificationsWithAvatars.length >
                     0 && (
                         <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
-
                             {notificationsWithAvatars.map(
                                 (
                                     notification: any,
@@ -234,20 +238,12 @@ async function NotificationsContent() {
                                             ?.nickname ??
                                         "친구";
 
-                                    const isLike =
-                                        notification.type ===
-                                        "like";
-
-                                    const isComment =
-                                        notification.type ===
-                                        "comment";
-
-                                    const isPost =
-                                        notification.type ===
-                                        "post";
+                                    const type =
+                                        notification.type;
 
                                     const groupId =
-                                        notification.posts
+                                        notification
+                                            .posts
                                             ?.group_id;
 
                                     const postUrl =
@@ -264,14 +260,13 @@ async function NotificationsContent() {
                                                 postUrl
                                             }
                                             className={
-                                                index === 0
+                                                index ===
+                                                0
                                                     ? "group flex gap-3.5 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
                                                     : "group flex gap-3.5 border-t border-gray-100 px-5 py-5 transition hover:bg-gray-50 sm:px-6"
                                             }
                                         >
-                                            {/* 프로필 */}
                                             <div className="relative shrink-0">
-
                                                 {notification.avatar_url ? (
                                                     <img
                                                         src={
@@ -287,18 +282,13 @@ async function NotificationsContent() {
                                                 )}
 
                                                 <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-black text-[11px] text-white">
-                                                    {isLike
-                                                        ? "♥"
-                                                        : isComment
-                                                            ? "●"
-                                                            : "＋"}
+                                                    {getNotificationIcon(
+                                                        type
+                                                    )}
                                                 </div>
-
                                             </div>
 
-                                            {/* 내용 */}
                                             <div className="min-w-0 flex-1">
-
                                                 <p className="text-[14px] leading-6 text-gray-700">
                                                 <span className="font-black text-black">
                                                     {
@@ -306,50 +296,33 @@ async function NotificationsContent() {
                                                     }
                                                 </span>
 
-                                                    {isLike
-                                                        ? "님이 회원님의 게시물을 좋아합니다."
-                                                        : isComment
-                                                            ? "님이 회원님의 게시물에 댓글을 남겼습니다."
-                                                            : isPost
-                                                                ? "님이 새 게시물을 올렸어요."
-                                                                : "님의 새로운 활동이 있어요."}
+                                                    {getNotificationMessage(
+                                                        type
+                                                    )}
                                                 </p>
 
-                                                <time className="mt-1 block text-[11px] text-gray-400">
-                                                    {new Date(
+                                                <time
+                                                    className="mt-1 block text-[11px] text-gray-400"
+                                                    dateTime={
                                                         notification.created_at
-                                                    ).toLocaleString(
-                                                        "ko-KR",
-                                                        {
-                                                            month:
-                                                                "long",
-                                                            day:
-                                                                "numeric",
-                                                            hour:
-                                                                "2-digit",
-                                                            minute:
-                                                                "2-digit",
-                                                        }
+                                                    }
+                                                >
+                                                    {formatNotificationDate(
+                                                        notification.created_at
                                                     )}
                                                 </time>
-
                                             </div>
 
-                                            {/* 오른쪽 영역 */}
                                             <div className="flex shrink-0 items-center gap-3">
-
-                                                {/* 아직 읽지 않았던 알림 */}
                                                 {!notification.is_read && (
                                                     <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
                                                 )}
 
-                                                {/* 이동 화살표 */}
                                                 <svg
                                                     width="18"
                                                     height="18"
                                                     viewBox="0 0 24 24"
                                                     fill="none"
-                                                    xmlns="http://www.w3.org/2000/svg"
                                                     aria-hidden="true"
                                                     className="text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-500"
                                                 >
@@ -361,102 +334,112 @@ async function NotificationsContent() {
                                                         strokeLinejoin="round"
                                                     />
                                                 </svg>
-
                                             </div>
                                         </Link>
                                     );
                                 }
                             )}
-
                         </section>
                     )}
             </div>
-
-            {/* ========================================
-                하단 메뉴
-            ======================================== */}
-
-
         </main>
     );
 }
-function HomeIcon() {
-    return (
-        <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="m3 11 9-8 9 8"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M5 10v10h14V10M9 20v-6h6v6"
-                stroke="currentColor"
-                strokeWidth="1.9"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
+
+// ========================================
+// 알림 문구
+// ========================================
+
+function getNotificationMessage(
+    type: string
+) {
+    switch (type) {
+        case "like":
+            return "님이 회원님의 게시물을 좋아합니다.";
+
+        case "comment":
+            return "님이 회원님의 게시물에 댓글을 남겼습니다.";
+
+        case "reply":
+            return "님이 회원님의 댓글에 답글을 남겼습니다.";
+
+        case "mention":
+            return "님이 댓글에서 회원님을 언급했습니다.";
+
+        case "post":
+            return "님이 새 게시물을 올렸어요.";
+
+        default:
+            return "님의 새로운 활동이 있어요.";
+    }
 }
 
-function BellIcon() {
-    return (
-        <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-            <path
-                d="M10 21h4"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-            />
-        </svg>
-    );
+// ========================================
+// 알림 아이콘
+// ========================================
+
+function getNotificationIcon(
+    type: string
+) {
+    switch (type) {
+        case "like":
+            return "♥";
+
+        case "comment":
+            return "●";
+
+        case "reply":
+            return "↩";
+
+        case "mention":
+            return "@";
+
+        case "post":
+            return "＋";
+
+        default:
+            return "●";
+    }
 }
 
-function UserIcon() {
-    return (
-        <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <circle
-                cx="12"
-                cy="8"
-                r="4"
-                stroke="currentColor"
-                strokeWidth="1.8"
-            />
-            <path
-                d="M4 21a8 8 0 0 1 16 0"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-            />
-        </svg>
-    );
+// ========================================
+// 날짜
+// 서버/브라우저에서 같은 결과가 나오도록
+// 고정된 숫자 형식 사용
+// ========================================
+
+function formatNotificationDate(
+    dateString: string
+) {
+    const parts =
+        new Intl.DateTimeFormat(
+            "en-US",
+            {
+                timeZone:
+                    "Asia/Seoul",
+                month:
+                    "numeric",
+                day:
+                    "numeric",
+                hour:
+                    "numeric",
+                minute:
+                    "2-digit",
+                hour12: false,
+            }
+        ).formatToParts(
+            new Date(dateString)
+        );
+
+    const getPart = (
+        type: Intl.DateTimeFormatPartTypes
+    ) =>
+        parts.find(
+            (part) =>
+                part.type === type
+        )?.value ?? "";
+
+    return `${getPart("month")}. ${getPart("day")}. ${getPart("hour")}:${getPart("minute")}`;
 }
 
 export default function NotificationsPage() {
@@ -464,9 +447,7 @@ export default function NotificationsPage() {
         <Suspense
             fallback={
                 <main className="mx-auto min-h-screen w-full max-w-[720px] border-x border-gray-100 bg-[#f7f7f7] px-4 py-8">
-
                     <div className="animate-pulse">
-
                         <div className="h-4 w-16 rounded bg-gray-200" />
 
                         <div className="mt-3 h-7 w-24 rounded bg-gray-200" />
@@ -476,9 +457,7 @@ export default function NotificationsPage() {
                         <div className="mt-4 h-24 rounded-[26px] bg-gray-100" />
 
                         <div className="mt-3 h-24 rounded-[26px] bg-gray-100" />
-
                     </div>
-
                 </main>
             }
         >

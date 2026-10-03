@@ -6,8 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GroupSwitcher } from "@/components/group-switcher";
 import { CreatePostForm } from "@/components/create-post-form";
 import { PostMenu } from "@/components/post-menu";
-import { CommentForm } from "@/components/comment-form";
-import { CommentList } from "@/components/comment-list";
+import { CommentSection } from "@/components/comment-section";
 import { PostImageSlider } from "@/components/post-image-slider";
 import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
@@ -119,6 +118,9 @@ async function Feed({
             )
         `)
             .eq("user_id", user.id)
+            .order("sort_order", {
+                ascending: true,
+            })
             .order("joined_at", {
                 ascending: true,
             }),
@@ -298,10 +300,16 @@ async function Feed({
                 content,
                 created_at,
                 user_id,
-
+                parent_id,
+                reply_to_user_id,
+            
                 profiles!comments_user_id_fkey (
                     nickname,
                     avatar_url
+                ),
+            
+                comment_mentions (
+                    user_id
                 )
             )
         `)
@@ -584,6 +592,14 @@ async function Feed({
                             >
                                 <HomeIcon />
                                 피드
+                            </Link>
+
+                            <Link
+                                href={`/profile/${user.id}`}
+                                className="flex h-12 items-center gap-3 rounded-[16px] px-4 text-[14px] font-bold text-gray-500 transition hover:bg-white"
+                            >
+                                <GridIcon />
+                                내 피드
                             </Link>
 
                             <Link
@@ -1131,19 +1147,94 @@ async function Feed({
                                                     </div>
 
                                                     {/* 댓글 목록 */}
-                                                    <CommentList
-                                                        comments={post.comments ?? []}
+                                                    <CommentSection
+                                                        postId={post.id}
+                                                        comments={(post.comments ?? []).map(
+                                                            (comment: any) => ({
+                                                                ...comment,
+
+                                                                mentions: (
+                                                                    comment.comment_mentions ??
+                                                                    []
+                                                                )
+                                                                    .map(
+                                                                        (mention: any) => {
+                                                                            const member =
+                                                                                groupMembersWithAvatars.find(
+                                                                                    (
+                                                                                        item: any
+                                                                                    ) =>
+                                                                                        item.user_id ===
+                                                                                        mention.user_id
+                                                                                );
+
+                                                                            if (!member) {
+                                                                                return null;
+                                                                            }
+
+                                                                            return {
+                                                                                userId:
+                                                                                mention.user_id,
+
+                                                                                nickname:
+                                                                                    member.profiles
+                                                                                        ?.nickname ??
+                                                                                    "사용자",
+                                                                            };
+                                                                        }
+                                                                    )
+                                                                    .filter(Boolean),
+
+                                                                replyToUser:
+                                                                    comment.reply_to_user_id
+                                                                        ? (() => {
+                                                                            const member =
+                                                                                groupMembersWithAvatars.find(
+                                                                                    (
+                                                                                        item: any
+                                                                                    ) =>
+                                                                                        item.user_id ===
+                                                                                        comment.reply_to_user_id
+                                                                                );
+
+                                                                            if (!member) {
+                                                                                return null;
+                                                                            }
+
+                                                                            return {
+                                                                                userId:
+                                                                                member.user_id,
+
+                                                                                nickname:
+                                                                                    member.profiles
+                                                                                        ?.nickname ??
+                                                                                    "사용자",
+                                                                            };
+                                                                        })()
+                                                                        : null,
+                                                            })
+                                                        )}
                                                         currentUserId={user.id}
+                                                        avatarUrl={myAvatarUrl}
+                                                        members={groupMembersWithAvatars.map(
+                                                            (member: any) => ({
+                                                                userId:
+                                                                member.user_id,
+
+                                                                nickname:
+                                                                    member.profiles
+                                                                        ?.nickname ??
+                                                                    "사용자",
+
+                                                                avatarUrl:
+                                                                    member.avatar_url ??
+                                                                    null,
+                                                            })
+                                                        )}
+                                                        createAction={createComment}
                                                         deleteAction={
                                                             deleteCommentAction
                                                         }
-                                                    />
-
-                                                    {/* 댓글 작성 */}
-                                                    <CommentForm
-                                                        postId={post.id}
-                                                        avatarUrl={myAvatarUrl}
-                                                        createAction={createComment}
                                                     />
                                                 </div>
                                             </article>
@@ -1276,6 +1367,58 @@ function HomeIcon() {
                 strokeWidth="1.9"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+            />
+        </svg>
+    );
+}
+
+function GridIcon() {
+    return (
+        <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <rect
+                x="3"
+                y="3"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="14"
+                y="3"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="3"
+                y="14"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+            />
+
+            <rect
+                x="14"
+                y="14"
+                width="7"
+                height="7"
+                rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
             />
         </svg>
     );

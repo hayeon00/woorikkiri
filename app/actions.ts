@@ -269,130 +269,249 @@ export async function createPost(formData: FormData) {
 }
 
 
-
-export async function toggleLike(postId: number) {
-    const supabase = await createClient();
+export async function toggleLike(
+    postId: number
+) {
+    const supabase =
+        await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(
+            "로그인이 필요합니다."
+        );
     }
 
-    if (!Number.isInteger(postId) || postId <= 0) {
-        throw new Error("잘못된 게시글입니다.");
+    if (
+        !Number.isInteger(postId) ||
+        postId <= 0
+    ) {
+        throw new Error(
+            "잘못된 게시글입니다."
+        );
     }
 
-    // 게시글 작성자 확인
+    // ========================================
+    // 게시글 확인
+    // ========================================
+
     const {
         data: post,
         error: postError,
     } = await supabase
         .from("posts")
-        .select("id, user_id, group_id")
+        .select(
+            "id, user_id, group_id"
+        )
         .eq("id", postId)
         .maybeSingle();
 
     if (postError) {
-        throw new Error(postError.message);
+        throw new Error(
+            postError.message
+        );
     }
 
     if (!post) {
-        throw new Error("게시글을 찾을 수 없습니다.");
+        throw new Error(
+            "게시글을 찾을 수 없습니다."
+        );
     }
 
-    // 내가 이미 좋아요를 눌렀는지 확인
-    const { data: existingLike } = await supabase
+    // ========================================
+    // 기존 좋아요 확인
+    // ========================================
+
+    const {
+        data: existingLike,
+        error: likeCheckError,
+    } = await supabase
         .from("likes")
         .select("post_id")
         .eq("post_id", postId)
         .eq("user_id", user.id)
         .maybeSingle();
 
+    if (likeCheckError) {
+        throw new Error(
+            likeCheckError.message
+        );
+    }
+
+    // ========================================
+    // 이미 좋아요 상태
+    // → 좋아요 취소
+    // ========================================
+
     if (existingLike) {
-        // 좋아요 취소
-        const { error } = await supabase
+        const {
+            error: deleteLikeError,
+        } = await supabase
             .from("likes")
             .delete()
             .eq("post_id", postId)
-            .eq("user_id", user.id);
+            .eq(
+                "user_id",
+                user.id
+            );
 
-        if (error) {
-            throw new Error(error.message);
+        if (deleteLikeError) {
+            throw new Error(
+                deleteLikeError.message
+            );
         }
 
-        // 좋아요를 취소하면 해당 알림도 제거
-        if (post.user_id !== user.id) {
-            const { error: notificationError } = await supabase
-                .from("notifications")
-                .delete()
-                .eq("user_id", post.user_id)
-                .eq("actor_id", user.id)
-                .eq("post_id", postId)
-                .eq("type", "like");
+        // ========================================
+        // 좋아요를 취소하면
+        // 기존 앱 내부 알림도 제거
+        //
+        // Push는 절대 보내지 않는다.
+        // ========================================
 
-            if (notificationError) {
+        if (
+            post.user_id &&
+            post.user_id !==
+            user.id
+        ) {
+            const {
+                error:
+                    notificationError,
+            } = await supabase
+                .from(
+                    "notifications"
+                )
+                .delete()
+                .eq(
+                    "user_id",
+                    post.user_id
+                )
+                .eq(
+                    "actor_id",
+                    user.id
+                )
+                .eq(
+                    "post_id",
+                    postId
+                )
+                .eq(
+                    "type",
+                    "like"
+                );
+
+            if (
+                notificationError
+            ) {
                 console.error(
                     "좋아요 알림 삭제 실패:",
-                    notificationError
-                );
-            }
-
-            try {
-                await sendPushToUsers(
-                    [post.user_id],
-                    "like",
-                    {
-                        title: "우리끼리",
-                        body: "내 게시물에 좋아요가 달렸어요. ❤️",
-                        url: `/?group=${post.group_id}#post-${postId}`,
-                    }
-                );
-            } catch (pushError) {
-                console.error(
-                    "좋아요 Push 발송 실패:",
-                    pushError
-                );
-            }
-        }
-    } else {
-        // 좋아요 추가
-        const { error } = await supabase
-            .from("likes")
-            .insert({
-                post_id: postId,
-                user_id: user.id,
-            });
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        // 내 게시글이 아닌 경우에만 알림 생성
-        if (post.user_id !== user.id) {
-            const { error: notificationError } = await supabase
-                .from("notifications")
-                .insert({
-                    user_id: post.user_id,
-                    actor_id: user.id,
-                    type: "like",
-                    post_id: postId,
-                });
-
-            if (notificationError) {
-                console.error(
-                    "좋아요 알림 생성 실패:",
                     notificationError
                 );
             }
         }
     }
 
-    revalidatePath("/");
-}
+        // ========================================
+        // 아직 좋아요하지 않은 상태
+        // → 좋아요 추가
+    // ========================================
 
+    else {
+        const {
+            error: insertLikeError,
+        } = await supabase
+            .from("likes")
+            .insert({
+                post_id:
+                postId,
+
+                user_id:
+                user.id,
+            });
+
+        if (insertLikeError) {
+            throw new Error(
+                insertLikeError.message
+            );
+        }
+
+        // ========================================
+        // 다른 사람의 게시글일 때만 알림
+        // ========================================
+
+        if (
+            post.user_id &&
+            post.user_id !==
+            user.id
+        ) {
+            const {
+                error:
+                    notificationError,
+            } = await supabase
+                .from(
+                    "notifications"
+                )
+                .insert({
+                    user_id:
+                    post.user_id,
+
+                    actor_id:
+                    user.id,
+
+                    type:
+                        "like",
+
+                    post_id:
+                    postId,
+                });
+
+            if (
+                notificationError
+            ) {
+                console.error(
+                    "좋아요 알림 생성 실패:",
+                    notificationError
+                );
+            }
+
+            // ========================================
+            // 좋아요를 추가했을 때만 Push
+            // ========================================
+
+            try {
+                await sendPushToUsers(
+                    [
+                        post.user_id,
+                    ],
+                    "like",
+                    {
+                        title:
+                            "우리끼리",
+
+                        body:
+                            "내 게시물에 좋아요가 달렸어요. ❤️",
+
+                        url:
+                            `/?group=${post.group_id}#post-${postId}`,
+                    }
+                );
+            } catch (
+                pushError
+                ) {
+                console.error(
+                    "좋아요 Push 발송 실패:",
+                    pushError
+                );
+            }
+        }
+    }
+
+    revalidatePath("/");
+    revalidatePath(
+        "/notifications"
+    );
+}
 export async function logout() {
     const supabase = await createClient();
 
@@ -404,15 +523,20 @@ export async function logout() {
 
     revalidatePath("/");
 }
-export async function createComment(formData: FormData) {
-    const supabase = await createClient();
+export async function createComment(
+    formData: FormData
+) {
+    const supabase =
+        await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(
+            "로그인이 필요합니다."
+        );
     }
 
     const postId = Number(
@@ -423,6 +547,23 @@ export async function createComment(formData: FormData) {
         formData.get("content") ?? ""
     ).trim();
 
+    const requestedParentId = Number(
+        formData.get("parent_id") ?? 0
+    );
+
+    const requestedMentionUserIds = [
+        ...new Set(
+            formData
+                .getAll(
+                    "mention_user_ids"
+                )
+                .map((value) =>
+                    String(value)
+                )
+                .filter(Boolean)
+        ),
+    ];
+
     if (
         !Number.isInteger(postId) ||
         postId <= 0
@@ -432,22 +573,32 @@ export async function createComment(formData: FormData) {
         );
     }
 
-    if (!content || content.length > 300) {
+    if (
+        !content ||
+        content.length > 300
+    ) {
         return;
     }
 
-    // 게시글 작성자 확인
+    // ========================================
+    // 게시글 확인
+    // ========================================
+
     const {
         data: post,
         error: postError,
     } = await supabase
         .from("posts")
-        .select("id, user_id, group_id")
+        .select(
+            "id, user_id, group_id"
+        )
         .eq("id", postId)
         .maybeSingle();
 
     if (postError) {
-        throw new Error(postError.message);
+        throw new Error(
+            postError.message
+        );
     }
 
     if (!post) {
@@ -456,66 +607,437 @@ export async function createComment(formData: FormData) {
         );
     }
 
-    // 댓글을 저장하면서 생성된 댓글 id 가져오기
+    // ========================================
+    // 답글 대상 확인
+    // ========================================
+
+    let parentId:
+        | number
+        | null = null;
+
+    let replyToUserId:
+        | string
+        | null = null;
+
+    if (
+        Number.isInteger(
+            requestedParentId
+        ) &&
+        requestedParentId > 0
+    ) {
+        const {
+            data: targetComment,
+            error: targetError,
+        } = await supabase
+            .from("comments")
+            .select(
+                "id, post_id, user_id, parent_id"
+            )
+            .eq(
+                "id",
+                requestedParentId
+            )
+            .maybeSingle();
+
+        if (targetError) {
+            throw new Error(
+                targetError.message
+            );
+        }
+
+        if (
+            !targetComment ||
+            targetComment.post_id !==
+            postId
+        ) {
+            throw new Error(
+                "답글을 작성할 댓글을 찾을 수 없습니다."
+            );
+        }
+
+        parentId =
+            targetComment.parent_id ??
+            targetComment.id;
+
+        replyToUserId =
+            targetComment.user_id ??
+            null;
+    }
+
+    // ========================================
+    // 직접 멘션 대상 검증
+    //
+    // 현재 공간의 멤버만 허용
+    // ========================================
+
+    let validMentionUserIds:
+        string[] = [];
+
+    if (
+        requestedMentionUserIds.length >
+        0
+    ) {
+        const {
+            data: mentionedMembers,
+            error:
+                mentionedMembersError,
+        } = await supabase
+            .from("group_members")
+            .select("user_id")
+            .eq(
+                "group_id",
+                post.group_id
+            )
+            .in(
+                "user_id",
+                requestedMentionUserIds
+            );
+
+        if (
+            mentionedMembersError
+        ) {
+            console.error(
+                "멘션 사용자 확인 실패:",
+                mentionedMembersError
+            );
+        } else {
+            validMentionUserIds = [
+                ...new Set(
+                    (
+                        mentionedMembers ??
+                        []
+                    )
+                        .map(
+                            (member) =>
+                                member.user_id
+                        )
+                        .filter(
+                            (
+                                mentionedUserId
+                            ) =>
+                                mentionedUserId !==
+                                user.id
+                        )
+                ),
+            ];
+        }
+    }
+
+    // ========================================
+    // 댓글 저장
+    // ========================================
+
     const {
         data: comment,
-        error,
+        error: commentError,
     } = await supabase
         .from("comments")
         .insert({
-            post_id: postId,
-            user_id: user.id,
+            post_id:
+            postId,
+
+            user_id:
+            user.id,
+
             content,
+
+            parent_id:
+            parentId,
+
+            reply_to_user_id:
+            replyToUserId,
         })
         .select("id")
         .single();
 
-    if (error) {
-        throw new Error(error.message);
+    if (commentError) {
+        throw new Error(
+            commentError.message
+        );
     }
 
-    // 내 글에 내가 댓글을 단 경우에는 알림을 만들지 않음
-    if (post.user_id !== user.id) {
+    // ========================================
+    // 실제 멘션 관계 저장
+    // ========================================
+
+    if (
+        validMentionUserIds.length >
+        0
+    ) {
         const {
-            error: notificationError,
+            error: mentionError,
+        } = await supabase
+            .from(
+                "comment_mentions"
+            )
+            .insert(
+                validMentionUserIds.map(
+                    (
+                        mentionedUserId
+                    ) => ({
+                        comment_id:
+                        comment.id,
+
+                        user_id:
+                        mentionedUserId,
+                    })
+                )
+            );
+
+        if (mentionError) {
+            console.error(
+                "댓글 멘션 저장 실패:",
+                mentionError
+            );
+        }
+    }
+
+    // ========================================
+    // 알림 목록 생성
+    //
+    // Map<userId, type>
+    //
+    // 우선순위:
+    // reply > mention > comment
+    // ========================================
+
+    const notificationMap =
+        new Map<
+            string,
+            | "comment"
+            | "reply"
+            | "mention"
+        >();
+
+    // 일반 댓글
+    if (
+        !parentId &&
+        post.user_id &&
+        post.user_id !==
+        user.id
+    ) {
+        notificationMap.set(
+            post.user_id,
+            "comment"
+        );
+    }
+
+    // 답글
+    if (
+        parentId &&
+        replyToUserId &&
+        replyToUserId !==
+        user.id
+    ) {
+        notificationMap.set(
+            replyToUserId,
+            "reply"
+        );
+    }
+
+    // 직접 멘션
+    for (
+        const mentionedUserId of
+        validMentionUserIds
+        ) {
+        if (
+            mentionedUserId ===
+            user.id
+        ) {
+            continue;
+        }
+
+        // 이미 답글 대상이면
+        // reply를 유지한다.
+        if (
+            notificationMap.get(
+                mentionedUserId
+            ) === "reply"
+        ) {
+            continue;
+        }
+
+        notificationMap.set(
+            mentionedUserId,
+            "mention"
+        );
+    }
+
+    const notificationEntries =
+        Array.from(
+            notificationMap.entries()
+        );
+
+    // ========================================
+    // 앱 내부 알림
+    // ========================================
+
+    if (
+        notificationEntries.length >
+        0
+    ) {
+        const notificationRows =
+            notificationEntries.map(
+                ([
+                     recipientUserId,
+                     type,
+                 ]) => ({
+                    user_id:
+                    recipientUserId,
+
+                    actor_id:
+                    user.id,
+
+                    type,
+
+                    post_id:
+                    postId,
+
+                    comment_id:
+                    comment.id,
+                })
+            );
+
+        const {
+            error:
+                notificationError,
         } = await supabase
             .from("notifications")
-            .insert({
-                user_id: post.user_id,
-                actor_id: user.id,
-                type: "comment",
-                post_id: postId,
-                comment_id: comment.id,
-            });
+            .insert(
+                notificationRows
+            );
 
-        if (notificationError) {
+        if (
+            notificationError
+        ) {
             console.error(
                 "댓글 알림 생성 실패:",
                 notificationError
             );
         }
+    }
 
-        try {
+    // ========================================
+    // Push
+    //
+    // 기존 알림 설정의 comment_enabled를
+    // 그대로 사용하기 위해 Push category는
+    // comment로 유지한다.
+    //
+    // 수신자 종류별로 문구만 다르게 보낸다.
+    // ========================================
+
+    const commentRecipients =
+        notificationEntries
+            .filter(
+                ([, type]) =>
+                    type ===
+                    "comment"
+            )
+            .map(
+                ([userId]) =>
+                    userId
+            );
+
+    const replyRecipients =
+        notificationEntries
+            .filter(
+                ([, type]) =>
+                    type ===
+                    "reply"
+            )
+            .map(
+                ([userId]) =>
+                    userId
+            );
+
+    const mentionRecipients =
+        notificationEntries
+            .filter(
+                ([, type]) =>
+                    type ===
+                    "mention"
+            )
+            .map(
+                ([userId]) =>
+                    userId
+            );
+
+    const pushUrl =
+        `/?group=${post.group_id}#post-${postId}`;
+
+    try {
+        if (
+            commentRecipients.length >
+            0
+        ) {
             await sendPushToUsers(
-                [post.user_id],
+                commentRecipients,
                 "comment",
                 {
-                    title: "우리끼리",
-                    body: "내 게시물에 새 댓글이 달렸어요. 💬",
-                    url: `/?group=${post.group_id}#post-${postId}`,
+                    title:
+                        "우리끼리",
+
+                    body:
+                        "내 게시물에 새 댓글이 달렸어요. 💬",
+
+                    url:
+                    pushUrl,
                 }
             );
-        } catch (pushError) {
-            console.error(
-                "댓글 Push 발송 실패:",
-                pushError
+        }
+
+        if (
+            replyRecipients.length >
+            0
+        ) {
+            await sendPushToUsers(
+                replyRecipients,
+                "comment",
+                {
+                    title:
+                        "우리끼리",
+
+                    body:
+                        "내 댓글에 답글이 달렸어요. 💬",
+
+                    url:
+                    pushUrl,
+                }
             );
         }
+
+        if (
+            mentionRecipients.length >
+            0
+        ) {
+            await sendPushToUsers(
+                mentionRecipients,
+                "comment",
+                {
+                    title:
+                        "우리끼리",
+
+                    body:
+                        "댓글에서 회원님을 언급했어요. 💬",
+
+                    url:
+                    pushUrl,
+                }
+            );
+        }
+    } catch (pushError) {
+        console.error(
+            "댓글 Push 발송 실패:",
+            pushError
+        );
     }
 
     revalidatePath("/");
+    revalidatePath(
+        "/notifications"
+    );
 }
-
 export async function updatePost(formData: FormData) {
     const supabase = await createClient();
 
@@ -1669,5 +2191,107 @@ export async function updateNotificationPreferences(
         );
     }
 
+    revalidatePath("/settings");
+}
+
+export async function updateGroupOrder(
+    groupIds: number[]
+) {
+    const supabase =
+        await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error(
+            "로그인이 필요합니다."
+        );
+    }
+
+    if (
+        !Array.isArray(groupIds) ||
+        groupIds.length === 0
+    ) {
+        return;
+    }
+
+    const uniqueIds = [
+        ...new Set(groupIds),
+    ];
+
+    if (
+        uniqueIds.length !==
+        groupIds.length
+    ) {
+        throw new Error(
+            "잘못된 공간 순서입니다."
+        );
+    }
+
+    const {
+        data: memberships,
+        error: membershipError,
+    } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", user.id);
+
+    if (membershipError) {
+        throw new Error(
+            membershipError.message
+        );
+    }
+
+    const myGroupIds = new Set(
+        (memberships ?? []).map(
+            (membership) =>
+                membership.group_id
+        )
+    );
+
+    if (
+        groupIds.length !==
+        myGroupIds.size ||
+        groupIds.some(
+            (groupId) =>
+                !myGroupIds.has(groupId)
+        )
+    ) {
+        throw new Error(
+            "내 공간만 정렬할 수 있습니다."
+        );
+    }
+
+    for (
+        let index = 0;
+        index < groupIds.length;
+        index++
+    ) {
+        const {
+            error,
+        } = await supabase
+            .from("group_members")
+            .update({
+                sort_order: index,
+            })
+            .eq(
+                "user_id",
+                user.id
+            )
+            .eq(
+                "group_id",
+                groupIds[index]
+            );
+
+        if (error) {
+            throw new Error(
+                error.message
+            );
+        }
+    }
+
+    revalidatePath("/");
     revalidatePath("/settings");
 }

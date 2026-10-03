@@ -4,10 +4,12 @@ import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
-import { PostImageSlider } from "@/components/post-image-slider";
-import { LikeButton } from "@/components/like-button";
-
-import { toggleLike } from "../../../actions";
+import { ProfilePostGallery } from "@/components/profile-post-gallery";
+import {
+    toggleLike,
+    createComment,
+    deleteComment,
+} from "../../../actions";
 
 async function ProfileContent({
                                   userId,
@@ -52,6 +54,58 @@ async function ProfileContent({
 
     if (!targetProfile) {
         notFound();
+    }
+
+    const {
+        data: myProfile,
+        error: myProfileError,
+    } = await supabase
+        .from("profiles")
+        .select(`
+        nickname,
+        avatar_url
+    `)
+        .eq(
+            "id",
+            user.id
+        )
+        .maybeSingle();
+
+    if (myProfileError) {
+        console.error(
+            "내 프로필 조회 실패:",
+            myProfileError
+        );
+    }
+
+    let myAvatarUrl:
+        | string
+        | null = null;
+
+    if (
+        myProfile?.avatar_url
+    ) {
+        const {
+            data,
+            error,
+        } =
+            await supabase.storage
+                .from("avatars")
+                .createSignedUrl(
+                    myProfile.avatar_url,
+                    60 * 60
+                );
+
+        if (error) {
+            console.error(
+                "내 프로필 사진 URL 생성 실패:",
+                error
+            );
+        }
+
+        myAvatarUrl =
+            data?.signedUrl ??
+            null;
     }
 
     // ========================================
@@ -163,6 +217,132 @@ async function ProfileContent({
     );
 
     // ========================================
+// 보이는 모든 공간의 멤버
+// ========================================
+
+    let allGroupMembers: any[] =
+        [];
+
+    if (
+        visibleGroupIds.length >
+        0
+    ) {
+        const {
+            data,
+            error,
+        } = await supabase
+            .from(
+                "group_members"
+            )
+            .select(`
+            group_id,
+            user_id,
+
+            profiles (
+                nickname,
+                avatar_url
+            )
+        `)
+            .in(
+                "group_id",
+                visibleGroupIds
+            );
+
+        if (error) {
+            console.error(
+                "공간 멤버 조회 실패:",
+                error
+            );
+        }
+
+        allGroupMembers =
+            data ?? [];
+    }
+
+    const memberAvatarCache =
+        new Map<
+            string,
+            Promise<
+                string | null
+            >
+        >();
+
+    function getMemberAvatarUrl(
+        path:
+            | string
+            | null
+            | undefined
+    ) {
+        if (!path) {
+            return Promise.resolve(
+                null
+            );
+        }
+
+        const cached =
+            memberAvatarCache.get(
+                path
+            );
+
+        if (cached) {
+            return cached;
+        }
+
+        const promise =
+            supabase.storage
+                .from("avatars")
+                .createSignedUrl(
+                    path,
+                    60 * 60
+                )
+                .then(
+                    ({
+                         data,
+                         error,
+                     }) => {
+                        if (error) {
+                            console.error(
+                                "멤버 프로필 사진 URL 생성 실패:",
+                                error
+                            );
+
+                            return null;
+                        }
+
+                        return (
+                            data?.signedUrl ??
+                            null
+                        );
+                    }
+                );
+
+        memberAvatarCache.set(
+            path,
+            promise
+        );
+
+        return promise;
+    }
+
+    const allGroupMembersWithAvatars =
+        await Promise.all(
+            allGroupMembers.map(
+                async (
+                    member: any
+                ) => ({
+                    ...member,
+
+                    avatar_url:
+                        await getMemberAvatarUrl(
+                            member
+                                .profiles
+                                ?.avatar_url
+                        ),
+                })
+            )
+        );
+
+    // ========================================
     // 프로필 사진 Signed URL
     // ========================================
 
@@ -219,6 +399,24 @@ async function ProfileContent({
 
                 likes (
                     user_id
+                ),
+                
+                comments (
+                    id,
+                    content,
+                    created_at,
+                    user_id,
+                    parent_id,
+                    reply_to_user_id,
+                
+                    profiles!comments_user_id_fkey (
+                        nickname,
+                        avatar_url
+                    ),
+                
+                    comment_mentions (
+                        user_id
+                    )
                 )
             `)
             .eq("user_id", userId)
@@ -325,6 +523,136 @@ async function ProfileContent({
                             null
                     );
 
+                    const postMembers =
+                        allGroupMembersWithAvatars.filter(
+                            (
+                                member: any
+                            ) =>
+                                member.group_id ===
+                                post.group_id
+                        );
+
+                    const commentsWithAvatars =
+                        await Promise.all(
+                            (
+                                post.comments ??
+                                []
+                            ).map(
+                                async (
+                                    comment: any
+                                ) => {
+                                    const avatarUrl =
+                                        await getMemberAvatarUrl(
+                                            comment
+                                                .profiles
+                                                ?.avatar_url
+                                        );
+
+                                    const mentions =
+                                        (
+                                            comment.comment_mentions ??
+                                            []
+                                        )
+                                            .map(
+                                                (
+                                                    mention: any
+                                                ) => {
+                                                    const member =
+                                                        postMembers.find(
+                                                            (
+                                                                item: any
+                                                            ) =>
+                                                                item.user_id ===
+                                                                mention.user_id
+                                                        );
+
+                                                    if (
+                                                        !member
+                                                    ) {
+                                                        return null;
+                                                    }
+
+                                                    return {
+                                                        userId:
+                                                        mention.user_id,
+
+                                                        nickname:
+                                                            member
+                                                                .profiles
+                                                                ?.nickname ??
+                                                            "사용자",
+                                                    };
+                                                }
+                                            )
+                                            .filter(
+                                                Boolean
+                                            );
+
+                                    const replyToUser =
+                                        comment.reply_to_user_id
+                                            ? (() => {
+                                                const member =
+                                                    postMembers.find(
+                                                        (
+                                                            item: any
+                                                        ) =>
+                                                            item.user_id ===
+                                                            comment.reply_to_user_id
+                                                    );
+
+                                                if (
+                                                    !member
+                                                ) {
+                                                    return null;
+                                                }
+
+                                                return {
+                                                    userId:
+                                                    member.user_id,
+
+                                                    nickname:
+                                                        member
+                                                            .profiles
+                                                            ?.nickname ??
+                                                        "사용자",
+                                                };
+                                            })()
+                                            : null;
+
+                                    return {
+                                        ...comment,
+
+                                        avatar_url:
+                                        avatarUrl,
+
+                                        mentions,
+
+                                        replyToUser,
+                                    };
+                                }
+                            )
+                        );
+
+                    const members =
+                        postMembers.map(
+                            (
+                                member: any
+                            ) => ({
+                                userId:
+                                member.user_id,
+
+                                nickname:
+                                    member
+                                        .profiles
+                                        ?.nickname ??
+                                    "사용자",
+
+                                avatarUrl:
+                                    member.avatar_url ??
+                                    null,
+                            })
+                        );
+
                     const likedByMe =
                         post.likes?.some(
                             (
@@ -336,12 +664,20 @@ async function ProfileContent({
 
                     return {
                         ...post,
+
                         image_urls:
                         imageUrls,
+
+                        comments:
+                        commentsWithAvatars,
+
+                        members,
+
                         like_count:
                             post.likes
                                 ?.length ??
                             0,
+
                         liked_by_me:
                         likedByMe,
                     };
@@ -356,6 +692,43 @@ async function ProfileContent({
 
         await toggleLike(postId);
     }
+
+    async function createCommentAction(
+        formData: FormData
+    ) {
+        "use server";
+
+        await createComment(
+            formData
+        );
+    }
+
+    async function deleteCommentAction(
+        formData: FormData
+    ) {
+        "use server";
+
+        const commentId =
+            Number(
+                formData.get(
+                    "comment_id"
+                )
+            );
+
+        if (
+            !Number.isInteger(
+                commentId
+            ) ||
+            commentId <= 0
+        ) {
+            return;
+        }
+
+        await deleteComment(
+            commentId
+        );
+    }
+
 
     const isMe =
         user.id === userId;
@@ -452,122 +825,60 @@ async function ProfileContent({
                 </section>
 
                 {/* 개인 피드 */}
-                <section className="space-y-3 px-3 pt-5 sm:px-5">
-                    <div className="flex items-center justify-between px-1 pb-1">
-                        <h2 className="text-[17px] font-black tracking-[-0.03em]">
-                            {isMe
-                                ? "내 이야기"
-                                : `${
-                                    targetProfile.nickname ??
-                                    "친구"
-                                }의 이야기`}
-                        </h2>
+                {/* 개인 피드 */}
+                <section className="pt-3">
+                    <div className="px-4 pb-3 pt-2 sm:px-5">
+                        <div className="flex items-end justify-between gap-4">
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400">
+                                    PROFILE FEED
+                                </p>
 
-                        <span className="text-[11px] font-medium text-gray-400">
-                            {
-                                postsWithImages.length
-                            }
-                            개
-                        </span>
+                                <h2 className="mt-1 text-[17px] font-black tracking-[-0.03em]">
+                                    {isMe
+                                        ? "내 이야기"
+                                        : `${
+                                            targetProfile.nickname ??
+                                            "친구"
+                                        }의 이야기`}
+                                </h2>
+                            </div>
+
+                            <span className="text-[10px] font-bold text-gray-400">
+                {postsWithImages.length}개
+            </span>
+                        </div>
                     </div>
 
-                    {postsWithImages.length ===
-                        0 && (
-                            <div className="rounded-[24px] border border-black/[0.04] bg-white px-5 py-16 text-center">
-                                <p className="text-sm font-black">
-                                    아직 게시물이
-                                    없어요
-                                </p>
+                    <ProfilePostGallery
+                        posts={
+                            postsWithImages
+                        }
+                        groups={groups.map(
+                            (group: any) => ({
+                                id:
+                                group.id,
 
-                                <p className="mt-1.5 text-xs leading-5 text-gray-400">
-                                    {isMe
-                                        ? "공간에서 이야기를 작성하면 여기에 모여요."
-                                        : "함께한 공간에서 작성한 게시물이 여기에 보여요."}
-                                </p>
-                            </div>
+                                name:
+                                group.name,
+                            })
                         )}
-
-                    {postsWithImages.map(
-                        (post: any) => (
-                            <article
-                                key={post.id}
-                                className="overflow-hidden rounded-[22px] border border-black/[0.04] bg-white shadow-[0_6px_24px_rgba(0,0,0,0.025)]"
-                            >
-                                {/* 작성 공간 / 날짜 */}
-                                <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-5 sm:pt-5">
-                                    <Link
-                                        href={`/?group=${post.group_id}`}
-                                        className="min-w-0 truncate text-[12px] font-black text-gray-700 transition hover:text-gray-950"
-                                    >
-                                        {groupNameMap.get(
-                                                post.group_id
-                                            ) ??
-                                            "우리 공간"}
-                                    </Link>
-
-                                    <time className="shrink-0 text-[10px] font-medium text-gray-400">
-                                        {new Date(
-                                            post.created_at
-                                        ).toLocaleString(
-                                            "ko-KR",
-                                            {
-                                                month:
-                                                    "long",
-                                                day:
-                                                    "numeric",
-                                                hour:
-                                                    "2-digit",
-                                                minute:
-                                                    "2-digit",
-                                            }
-                                        )}
-                                    </time>
-                                </div>
-
-                                {post.content && (
-                                    <p className="whitespace-pre-wrap break-words px-4 pb-3 text-[14px] leading-[1.65] text-gray-900 sm:px-5 sm:pb-4 sm:text-[15px]">
-                                        {
-                                            post.content
-                                        }
-                                    </p>
-                                )}
-
-                                {post.image_urls
-                                        ?.length >
-                                    0 && (
-                                        <PostImageSlider
-                                            images={
-                                                post.image_urls
-                                            }
-                                        />
-                                    )}
-
-                                <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-                                    <LikeButton
-                                        postId={
-                                            post.id
-                                        }
-                                        initialLiked={
-                                            post.liked_by_me
-                                        }
-                                        initialCount={
-                                            post.like_count
-                                        }
-                                        toggleAction={
-                                            toggleLikeAction
-                                        }
-                                    />
-
-                                    <Link
-                                        href={`/?group=${post.group_id}#post-${post.id}`}
-                                        className="mt-3 inline-flex text-[11px] font-bold text-gray-400 transition hover:text-gray-700"
-                                    >
-                                        공간에서 댓글 보기 →
-                                    </Link>
-                                </div>
-                            </article>
-                        )
-                    )}
+                        currentUserId={
+                            user.id
+                        }
+                        currentUserAvatarUrl={
+                            myAvatarUrl
+                        }
+                        toggleLikeAction={
+                            toggleLikeAction
+                        }
+                        createCommentAction={
+                            createCommentAction
+                        }
+                        deleteCommentAction={
+                            deleteCommentAction
+                        }
+                    />
                 </section>
             </div>
         </main>

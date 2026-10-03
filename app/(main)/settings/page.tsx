@@ -8,6 +8,7 @@ import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { PushNotificationButton } from "@/components/push-notification-button";
 import { NotificationPreferences } from "@/components/notification-preferences";
+import { SortableGroupList } from "@/components/sortable-group-list";
 
 import {
     logout,
@@ -19,6 +20,7 @@ import {
     updateGroupName,
     deleteGroup,
     deleteAccount,
+    updateGroupOrder,
 } from "../../actions";
 
 async function SettingsContent() {
@@ -82,6 +84,7 @@ async function SettingsContent() {
         .select(`
             group_id,
             joined_at,
+            sort_order,
 
             groups (
                 id,
@@ -92,6 +95,9 @@ async function SettingsContent() {
             )
         `)
         .eq("user_id", user.id)
+        .order("sort_order", {
+            ascending: true,
+        })
         .order("joined_at", {
             ascending: true,
         });
@@ -248,11 +254,11 @@ async function SettingsContent() {
                 </section>
 
                 {/* ========================================
-                    내 공간
-                ======================================== */}
+    내 공간
+======================================== */}
                 <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
 
-                    <div className="flex items-center justify-between px-5 pb-3 pt-5 sm:px-6">
+                    <div className="flex items-center justify-between px-5 pb-2 pt-5 sm:px-6">
                         <div>
                             <p className="text-[10px] font-bold tracking-[0.12em] text-gray-400">
                                 MY SPACES
@@ -264,175 +270,169 @@ async function SettingsContent() {
                         </div>
 
                         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500">
-                            {memberships?.length ??
-                                0}
-                            개
-                        </span>
+            {memberships?.length ?? 0}개
+        </span>
                     </div>
+
+                    {!!memberships?.length && (
+                        <div className="px-5 pb-3 sm:px-6">
+                            <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-sm shadow-sm">
+                                    ↕
+                                </div>
+
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-bold text-gray-600">
+                                        공간 순서를 바꿔보세요
+                                    </p>
+
+                                    <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                                        맨 위 공간이 로그인 후 첫 화면으로 열려요.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {!memberships?.length ? (
                         <div className="mx-5 mb-5 mt-2 rounded-2xl bg-gray-50 px-4 py-8 text-center">
                             <p className="text-sm font-bold">
-                                아직 참여한 공간이
-                                없어요
+                                아직 참여한 공간이 없어요
                             </p>
 
                             <p className="mt-1 text-xs text-gray-400">
-                                새 공간을 만들거나
-                                초대코드로
+                                새 공간을 만들거나 초대코드로
                                 참여해보세요.
                             </p>
                         </div>
                     ) : (
                         <div className="px-3 pb-3">
-                            {memberships.map(
-                                (
-                                    membership: any
-                                ) => {
-                                    const group =
-                                        membership.groups;
+                            <SortableGroupList
+                                groups={
+                                    memberships
+                                        .map(
+                                            (
+                                                membership: any
+                                            ) => {
+                                                const group =
+                                                    membership.groups;
 
-                                    if (
-                                        !group
-                                    ) {
-                                        return null;
-                                    }
+                                                if (!group) {
+                                                    return null;
+                                                }
 
-                                    const isOwner =
-                                        group.owner_id ===
-                                        user.id;
-
-                                    return (
-                                        <details
-                                            key={
-                                                group.id
+                                                return {
+                                                    id: group.id,
+                                                    name: group.name,
+                                                };
                                             }
-                                            className="group border-b border-gray-100 last:border-b-0"
-                                        >
-                                            <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl px-3 py-4 transition hover:bg-gray-50">
+                                        )
+                                        .filter(
+                                            (
+                                                group
+                                            ): group is {
+                                                id: number;
+                                                name: string;
+                                            } =>
+                                                group !==
+                                                null
+                                        )
+                                }
+                                updateAction={
+                                    updateGroupOrder
+                                }
+                            >
+                                {memberships.map(
+                                    (
+                                        membership: any
+                                    ) => {
+                                        const group =
+                                            membership.groups;
 
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="flex min-w-0 items-center gap-2">
-                                                        <p className="truncate text-sm font-black">
-                                                            {
-                                                                group.name
-                                                            }
+                                        if (!group) {
+                                            return null;
+                                        }
+
+                                        const isOwner =
+                                            group.owner_id ===
+                                            user.id;
+
+                                        return (
+                                            <details
+                                                key={
+                                                    group.id
+                                                }
+                                                className="group border-b border-gray-100 last:border-b-0"
+                                            >
+                                                <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl py-4 pl-3 pr-12 transition hover:bg-gray-50">
+
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex min-w-0 items-center gap-2">
+                                                            <p className="truncate text-sm font-black">
+                                                                {
+                                                                    group.name
+                                                                }
+                                                            </p>
+
+                                                            <span
+                                                                className={
+                                                                    isOwner
+                                                                        ? "shrink-0 rounded-full bg-black px-2 py-0.5 text-[9px] font-bold text-white"
+                                                                        : "shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[9px] font-bold text-gray-400"
+                                                                }
+                                                            >
+                                                {isOwner
+                                                    ? "방장"
+                                                    : "멤버"}
+                                            </span>
+                                                        </div>
+
+                                                        <p className="mt-1 text-[10px] text-gray-400">
+                                                            자세히 보기
                                                         </p>
-
-                                                        <span
-                                                            className={
-                                                                isOwner
-                                                                    ? "shrink-0 rounded-full bg-black px-2 py-0.5 text-[9px] font-bold text-white"
-                                                                    : "shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[9px] font-bold text-gray-400"
-                                                            }
-                                                        >
-                                                            {isOwner
-                                                                ? "방장"
-                                                                : "멤버"}
-                                                        </span>
                                                     </div>
 
-                                                    <p className="mt-1 text-[10px] text-gray-400">
-                                                        자세히
-                                                        보기
-                                                    </p>
-                                                </div>
+                                                    <Link
+                                                        href={`/?group=${group.id}`}
+                                                        className="shrink-0 rounded-full bg-gray-100 px-3.5 py-2 text-[10px] font-black text-gray-700 transition hover:bg-gray-200"
+                                                    >
+                                                        이동
+                                                    </Link>
+                                                </summary>
 
-                                                <Link
-                                                    href={`/?group=${group.id}`}
-                                                    className="shrink-0 rounded-full bg-gray-100 px-4 py-2 text-[11px] font-bold transition hover:bg-gray-200"
-                                                >
-                                                    이동
-                                                </Link>
+                                                <div className="mx-3 mb-3 rounded-2xl bg-gray-50 p-4">
 
-                                                <span className="shrink-0 text-xs text-gray-300 transition-transform group-open:rotate-180">
-                                                    ↓
-                                                </span>
-                                            </summary>
+                                                    {/* 초대 코드 */}
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-bold text-gray-400">
+                                                                초대코드
+                                                            </p>
 
-                                            <div className="mx-3 mb-3 rounded-2xl bg-gray-50 p-4">
+                                                            <p className="mt-1 truncate font-mono text-sm font-black tracking-widest text-gray-700">
+                                                                {
+                                                                    group.invite_code
+                                                                }
+                                                            </p>
+                                                        </div>
 
-                                                {/* 초대 코드 */}
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold text-gray-400">
-                                                            초대코드
-                                                        </p>
-
-                                                        <p className="mt-1 truncate font-mono text-sm font-black tracking-widest text-gray-700">
-                                                            {
-                                                                group.invite_code
-                                                            }
-                                                        </p>
-                                                    </div>
-
-                                                    <div className="shrink-0">
-                                                        <InviteLinkButton
-                                                            inviteCode={
-                                                                group.invite_code
-                                                            }
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {isOwner ? (
-                                                    <div className="mt-5 border-t border-gray-200 pt-4">
-
-                                                        {/* 공간 이름 변경 */}
-                                                        <form
-                                                            action={
-                                                                updateGroupName
-                                                            }
-                                                        >
-                                                            <input
-                                                                type="hidden"
-                                                                name="group_id"
-                                                                value={
-                                                                    group.id
+                                                        <div className="shrink-0">
+                                                            <InviteLinkButton
+                                                                inviteCode={
+                                                                    group.invite_code
                                                                 }
                                                             />
+                                                        </div>
+                                                    </div>
 
-                                                            <label className="text-[11px] font-bold text-gray-500">
-                                                                공간
-                                                                이름
-                                                                변경
-                                                            </label>
+                                                    {isOwner ? (
+                                                        <div className="mt-5 border-t border-gray-200 pt-4">
 
-                                                            <div className="mt-2 flex gap-2">
-                                                                <input
-                                                                    type="text"
-                                                                    name="name"
-                                                                    required
-                                                                    maxLength={
-                                                                        30
-                                                                    }
-                                                                    defaultValue={
-                                                                        group.name
-                                                                    }
-                                                                    className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
-                                                                />
-
-                                                                <button
-                                                                    type="submit"
-                                                                    className="shrink-0 rounded-xl bg-black px-4 text-xs font-bold text-white"
-                                                                >
-                                                                    변경
-                                                                </button>
-                                                            </div>
-                                                        </form>
-
-                                                        {/* 공간 삭제 */}
-                                                        <details className="mt-4 border-t border-gray-200 pt-4">
-                                                            <summary className="cursor-pointer list-none text-[11px] font-bold text-red-400">
-                                                                공간
-                                                                삭제
-                                                            </summary>
-
+                                                            {/* 공간 이름 변경 */}
                                                             <form
                                                                 action={
-                                                                    deleteGroup
+                                                                    updateGroupName
                                                                 }
-                                                                className="mt-3"
                                                             >
                                                                 <input
                                                                     type="hidden"
@@ -442,80 +442,118 @@ async function SettingsContent() {
                                                                     }
                                                                 />
 
-                                                                <p className="text-[10px] leading-5 text-gray-400">
-                                                                    삭제하려면{" "}
-                                                                    <strong className="text-gray-600">
-                                                                        {
+                                                                <label className="text-[11px] font-bold text-gray-500">
+                                                                    공간 이름 변경
+                                                                </label>
+
+                                                                <div className="mt-2 flex gap-2">
+                                                                    <input
+                                                                        type="text"
+                                                                        name="name"
+                                                                        required
+                                                                        maxLength={
+                                                                            30
+                                                                        }
+                                                                        defaultValue={
                                                                             group.name
                                                                         }
-                                                                    </strong>
-                                                                    을(를)
-                                                                    정확히
-                                                                    입력하세요.
-                                                                </p>
+                                                                        className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-gray-400 sm:text-sm"
+                                                                    />
 
-                                                                <input
-                                                                    type="text"
-                                                                    name="confirm_name"
-                                                                    required
-                                                                    autoComplete="off"
-                                                                    placeholder={
-                                                                        group.name
-                                                                    }
-                                                                    className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-red-300 sm:text-sm"
-                                                                />
-
-                                                                <button
-                                                                    type="submit"
-                                                                    className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-bold text-red-500 transition hover:bg-red-50"
-                                                                >
-                                                                    이
-                                                                    공간
-                                                                    영구
-                                                                    삭제
-                                                                </button>
+                                                                    <button
+                                                                        type="submit"
+                                                                        className="shrink-0 rounded-xl bg-black px-4 text-xs font-bold text-white"
+                                                                    >
+                                                                        변경
+                                                                    </button>
+                                                                </div>
                                                             </form>
-                                                        </details>
-                                                    </div>
-                                                ) : (
-                                                    <form
-                                                        action={
-                                                            leaveGroup
-                                                        }
-                                                        className="mt-5 border-t border-gray-200 pt-4"
-                                                    >
-                                                        <input
-                                                            type="hidden"
-                                                            name="group_id"
-                                                            value={
-                                                                group.id
+
+                                                            {/* 공간 삭제 */}
+                                                            <details className="mt-4 border-t border-gray-200 pt-4">
+                                                                <summary className="cursor-pointer list-none text-[11px] font-bold text-red-400">
+                                                                    공간 삭제
+                                                                </summary>
+
+                                                                <form
+                                                                    action={
+                                                                        deleteGroup
+                                                                    }
+                                                                    className="mt-3"
+                                                                >
+                                                                    <input
+                                                                        type="hidden"
+                                                                        name="group_id"
+                                                                        value={
+                                                                            group.id
+                                                                        }
+                                                                    />
+
+                                                                    <p className="text-[10px] leading-5 text-gray-400">
+                                                                        삭제하려면{" "}
+                                                                        <strong className="text-gray-600">
+                                                                            {
+                                                                                group.name
+                                                                            }
+                                                                        </strong>
+                                                                        을(를) 정확히
+                                                                        입력하세요.
+                                                                    </p>
+
+                                                                    <input
+                                                                        type="text"
+                                                                        name="confirm_name"
+                                                                        required
+                                                                        autoComplete="off"
+                                                                        placeholder={
+                                                                            group.name
+                                                                        }
+                                                                        className="mt-2 w-full rounded-xl border border-red-100 bg-white px-3 py-2.5 text-[16px] outline-none transition focus:border-red-300 sm:text-sm"
+                                                                    />
+
+                                                                    <button
+                                                                        type="submit"
+                                                                        className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-2.5 text-xs font-bold text-red-500 transition hover:bg-red-50"
+                                                                    >
+                                                                        이 공간 영구 삭제
+                                                                    </button>
+                                                                </form>
+                                                            </details>
+                                                        </div>
+                                                    ) : (
+                                                        <form
+                                                            action={
+                                                                leaveGroup
                                                             }
-                                                        />
-
-                                                        <button
-                                                            type="submit"
-                                                            className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-xs font-bold text-red-500 transition hover:bg-red-50"
+                                                            className="mt-5 border-t border-gray-200 pt-4"
                                                         >
-                                                            이
-                                                            공간에서
-                                                            나가기
-                                                        </button>
+                                                            <input
+                                                                type="hidden"
+                                                                name="group_id"
+                                                                value={
+                                                                    group.id
+                                                                }
+                                                            />
 
-                                                        <p className="mt-2 text-center text-[10px] leading-4 text-gray-400">
-                                                            나가도
-                                                            이전에
-                                                            작성한
-                                                            게시물과
-                                                            댓글은
-                                                            남습니다.
-                                                        </p>
-                                                    </form>
-                                                )}
-                                            </div>
-                                        </details>
-                                    );
-                                }
-                            )}
+                                                            <button
+                                                                type="submit"
+                                                                className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-xs font-bold text-red-500 transition hover:bg-red-50"
+                                                            >
+                                                                이 공간에서 나가기
+                                                            </button>
+
+                                                            <p className="mt-2 text-center text-[10px] leading-4 text-gray-400">
+                                                                나가도 이전에 작성한
+                                                                게시물과 댓글은 남습니다.
+                                                            </p>
+                                                        </form>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        );
+                                    }
+                                )}
+                            </SortableGroupList>
                         </div>
                     )}
                 </section>
