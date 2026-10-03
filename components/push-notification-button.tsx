@@ -20,22 +20,76 @@ type Status =
 
 export function PushNotificationButton() {
     const [status, setStatus] =
-        useState<Status>("loading");
+        useState<Status>(
+            "loading"
+        );
 
     const [message, setMessage] =
-        useState<string | null>(null);
+        useState<string | null>(
+            null
+        );
 
     useEffect(() => {
-        checkPushStatus();
+        void checkPushStatus();
     }, []);
+
+    // ========================================
+    // 현재 Push subscription을 서버와 동기화
+    // ========================================
+
+    async function syncSubscription(
+        subscription: PushSubscription
+    ) {
+        const json =
+            subscription.toJSON();
+
+        if (
+            !json.endpoint ||
+            !json.keys?.p256dh ||
+            !json.keys?.auth
+        ) {
+            throw new Error(
+                "Push 구독 정보를 읽을 수 없습니다."
+            );
+        }
+
+        await savePushSubscription({
+            endpoint:
+            json.endpoint,
+
+            keys: {
+                p256dh:
+                json.keys.p256dh,
+
+                auth:
+                json.keys.auth,
+            },
+        });
+    }
+
+    // ========================================
+    // Push 상태 확인
+    // ========================================
 
     async function checkPushStatus() {
         if (
-            !("serviceWorker" in navigator) ||
-            !("PushManager" in window) ||
-            !("Notification" in window)
+            !(
+                "serviceWorker" in
+                navigator
+            ) ||
+            !(
+                "PushManager" in
+                window
+            ) ||
+            !(
+                "Notification" in
+                window
+            )
         ) {
-            setStatus("unsupported");
+            setStatus(
+                "unsupported"
+            );
+
             return;
         }
 
@@ -43,45 +97,95 @@ export function PushNotificationButton() {
             Notification.permission ===
             "denied"
         ) {
-            setStatus("denied");
+            setStatus(
+                "denied"
+            );
+
             return;
         }
 
         try {
             const registration =
-                await navigator.serviceWorker.register(
-                    "/sw.js"
-                );
+                await navigator
+                    .serviceWorker
+                    .register(
+                        "/sw.js"
+                    );
 
             const subscription =
-                await registration.pushManager.getSubscription();
+                await registration
+                    .pushManager
+                    .getSubscription();
+
+            // ========================================
+            // 브라우저/PWA에 기존 구독이 있다면
+            // 단순히 enabled 처리하지 않고
+            // 현재 로그인 계정의 DB와 다시 동기화한다.
+            // ========================================
 
             if (subscription) {
-                setStatus("enabled");
-            } else {
-                setStatus("ready");
+                await syncSubscription(
+                    subscription
+                );
+
+                setStatus(
+                    "enabled"
+                );
+
+                return;
             }
+
+            setStatus(
+                "ready"
+            );
         } catch (error) {
             console.error(
                 "Push 상태 확인 실패:",
                 error
             );
 
-            setStatus("error");
+            setStatus(
+                "error"
+            );
+
+            setMessage(
+                "알림 상태를 확인하지 못했어요. 다시 시도해주세요."
+            );
         }
     }
 
+    // ========================================
+    // Push 활성화
+    // ========================================
+
     async function enablePush() {
-        setStatus("working");
-        setMessage(null);
+        setStatus(
+            "working"
+        );
+
+        setMessage(
+            null
+        );
 
         try {
             if (
-                !("serviceWorker" in navigator) ||
-                !("PushManager" in window) ||
-                !("Notification" in window)
+                !(
+                    "serviceWorker" in
+                    navigator
+                ) ||
+                !(
+                    "PushManager" in
+                    window
+                ) ||
+                !(
+                    "Notification" in
+                    window
+                )
             ) {
-                setStatus("unsupported");
+                setStatus(
+                    "unsupported"
+                );
+
                 return;
             }
 
@@ -96,63 +200,69 @@ export function PushNotificationButton() {
             }
 
             const registration =
-                await navigator.serviceWorker.register(
-                    "/sw.js"
-                );
+                await navigator
+                    .serviceWorker
+                    .register(
+                        "/sw.js"
+                    );
 
             const permission =
-                await Notification.requestPermission();
+                await Notification
+                    .requestPermission();
 
-            if (permission !== "granted") {
+            if (
+                permission !==
+                "granted"
+            ) {
                 if (
-                    permission === "denied"
+                    permission ===
+                    "denied"
                 ) {
-                    setStatus("denied");
+                    setStatus(
+                        "denied"
+                    );
                 } else {
-                    setStatus("ready");
+                    setStatus(
+                        "ready"
+                    );
                 }
 
                 return;
             }
 
             let subscription =
-                await registration.pushManager.getSubscription();
+                await registration
+                    .pushManager
+                    .getSubscription();
 
             if (!subscription) {
                 subscription =
-                    await registration.pushManager.subscribe(
-                        {
-                            userVisibleOnly: true,
+                    await registration
+                        .pushManager
+                        .subscribe({
+                            userVisibleOnly:
+                                true,
+
                             applicationServerKey:
                                 urlBase64ToUint8Array(
                                     publicKey
                                 ),
-                        }
-                    );
+                        });
             }
 
-            const json =
-                subscription.toJSON();
+            // ========================================
+            // 새 구독 또는 기존 구독을
+            // 현재 로그인 계정과 동기화
+            // ========================================
 
-            if (
-                !json.endpoint ||
-                !json.keys?.p256dh ||
-                !json.keys?.auth
-            ) {
-                throw new Error(
-                    "Push 구독 정보를 읽을 수 없습니다."
-                );
-            }
+            await syncSubscription(
+                subscription
+            );
 
-            await savePushSubscription({
-                endpoint: json.endpoint,
-                keys: {
-                    p256dh: json.keys.p256dh,
-                    auth: json.keys.auth,
-                },
-            });
+            setStatus(
+                "enabled"
+            );
 
-            setStatus("enabled");
             setMessage(
                 "이 기기에서 푸시 알림을 받을 수 있어요."
             );
@@ -162,14 +272,24 @@ export function PushNotificationButton() {
                 error
             );
 
-            setStatus("error");
+            setStatus(
+                "error"
+            );
+
             setMessage(
                 "푸시 알림을 설정하지 못했어요."
             );
         }
     }
 
-    if (status === "loading") {
+    // ========================================
+    // 로딩
+    // ========================================
+
+    if (
+        status ===
+        "loading"
+    ) {
         return (
             <div className="rounded-2xl bg-gray-50 px-4 py-4">
                 <p className="text-xs font-medium text-gray-400">
@@ -179,7 +299,14 @@ export function PushNotificationButton() {
         );
     }
 
-    if (status === "unsupported") {
+    // ========================================
+    // 지원 안 됨
+    // ========================================
+
+    if (
+        status ===
+        "unsupported"
+    ) {
         return (
             <div className="rounded-2xl bg-gray-50 px-4 py-4">
                 <p className="text-sm font-bold">
@@ -193,7 +320,14 @@ export function PushNotificationButton() {
         );
     }
 
-    if (status === "denied") {
+    // ========================================
+    // 권한 거부
+    // ========================================
+
+    if (
+        status ===
+        "denied"
+    ) {
         return (
             <div className="rounded-2xl bg-gray-50 px-4 py-4">
                 <div className="flex items-center gap-3">
@@ -215,7 +349,14 @@ export function PushNotificationButton() {
         );
     }
 
-    if (status === "enabled") {
+    // ========================================
+    // 활성화됨
+    // ========================================
+
+    if (
+        status ===
+        "enabled"
+    ) {
         return (
             <div>
                 <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-4">
@@ -236,12 +377,18 @@ export function PushNotificationButton() {
 
                 {message && (
                     <p className="mt-2 text-center text-[10px] font-medium text-gray-400">
-                        {message}
+                        {
+                            message
+                        }
                     </p>
                 )}
             </div>
         );
     }
+
+    // ========================================
+    // 활성화 버튼
+    // ========================================
 
     return (
         <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
@@ -257,22 +404,29 @@ export function PushNotificationButton() {
 
             <button
                 type="button"
-                onClick={enablePush}
+                onClick={
+                    enablePush
+                }
                 disabled={
-                    status === "working"
+                    status ===
+                    "working"
                 }
                 className="mt-3 h-11 w-full rounded-xl bg-black text-xs font-black text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {status === "working"
+                {status ===
+                "working"
                     ? "설정 중..."
-                    : status === "error"
+                    : status ===
+                    "error"
                         ? "다시 시도"
                         : "알림 사용하기"}
             </button>
 
             {message && (
                 <p className="mt-2 text-center text-[10px] font-medium text-red-400">
-                    {message}
+                    {
+                        message
+                    }
                 </p>
             )}
         </div>
@@ -284,9 +438,11 @@ function urlBase64ToUint8Array(
 ) {
     const padding =
         "=".repeat(
-            (4 -
+            (
+                4 -
                 (base64String.length %
-                    4)) %
+                    4)
+            ) %
             4
         );
 
@@ -295,15 +451,26 @@ function urlBase64ToUint8Array(
             base64String +
             padding
         )
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
+            .replace(
+                /-/g,
+                "+"
+            )
+            .replace(
+                /_/g,
+                "/"
+            );
 
     const rawData =
-        window.atob(base64);
+        window.atob(
+            base64
+        );
 
     return Uint8Array.from(
-        [...rawData].map((char) =>
-            char.charCodeAt(0)
+        [...rawData].map(
+            (char) =>
+                char.charCodeAt(
+                    0
+                )
         )
     );
 }
