@@ -244,6 +244,29 @@ export async function createPost(formData: FormData) {
             );
         }
 
+        const [
+            { data: actorProfile },
+            { data: groupInfo },
+        ] = await Promise.all([
+            supabase
+                .from("profiles")
+                .select("nickname")
+                .eq("id", user.id)
+                .maybeSingle(),
+
+            supabase
+                .from("groups")
+                .select("name")
+                .eq("id", groupId)
+                .maybeSingle(),
+        ]);
+
+        const actorNickname =
+            actorProfile?.nickname ?? "친구";
+
+        const groupName =
+            groupInfo?.name ?? "공간";
+
         after(async () => {
             try {
                 await sendPushToUsers(
@@ -253,8 +276,8 @@ export async function createPost(formData: FormData) {
                     ),
                     "post",
                     {
-                        title: "우리끼리",
-                        body: "새 게시물이 올라왔어요.",
+                        title: `우리끼리 · ${groupName}`,
+                        body: `${actorNickname}님이 새 게시물을 올렸어요.`,
                         url: `/?group=${groupId}&post=${post.id}`,
                     }
                 );
@@ -324,6 +347,29 @@ export async function toggleLike(
             "게시글을 찾을 수 없습니다."
         );
     }
+
+    const [
+        { data: actorProfile },
+        { data: groupInfo },
+    ] = await Promise.all([
+        supabase
+            .from("profiles")
+            .select("nickname")
+            .eq("id", user.id)
+            .maybeSingle(),
+
+        supabase
+            .from("groups")
+            .select("name")
+            .eq("id", post.group_id)
+            .maybeSingle(),
+    ]);
+
+    const actorNickname =
+        actorProfile?.nickname ?? "친구";
+
+    const groupName =
+        groupInfo?.name ?? "공간";
 
     // ========================================
     // 기존 좋아요 확인
@@ -492,10 +538,10 @@ export async function toggleLike(
                         "like",
                         {
                             title:
-                                "우리끼리",
+                                `우리끼리 · ${groupName}`,
 
                             body:
-                                "내 게시물에 좋아요가 달렸어요. ❤️",
+                                `${actorNickname}님이 회원님의 게시물을 좋아했어요. ❤️`,
 
                             url: `/?group=${post.group_id}&post=${post.id}`,
                         }
@@ -611,6 +657,29 @@ export async function createComment(
             "게시글을 찾을 수 없습니다."
         );
     }
+
+    const [
+        { data: actorProfile },
+        { data: groupInfo },
+    ] = await Promise.all([
+        supabase
+            .from("profiles")
+            .select("nickname")
+            .eq("id", user.id)
+            .maybeSingle(),
+
+        supabase
+            .from("groups")
+            .select("name")
+            .eq("id", post.group_id)
+            .maybeSingle(),
+    ]);
+
+    const actorNickname =
+        actorProfile?.nickname ?? "친구";
+
+    const groupName =
+        groupInfo?.name ?? "공간";
 
     // ========================================
     // 답글 대상 확인
@@ -986,10 +1055,10 @@ export async function createComment(
                         "comment",
                         {
                             title:
-                                "우리끼리",
+                                `우리끼리 · ${groupName}`,
 
                             body:
-                                "내 게시물에 새 댓글이 달렸어요. 💬",
+                                `${actorNickname}님이 회원님의 게시물에 댓글을 남겼어요. 💬`,
 
                             url:
                             pushUrl,
@@ -1008,10 +1077,10 @@ export async function createComment(
                         "comment",
                         {
                             title:
-                                "우리끼리",
+                                `우리끼리 · ${groupName}`,
 
                             body:
-                                "내 댓글에 답글이 달렸어요. 💬",
+                                `${actorNickname}님이 회원님의 댓글에 답글을 남겼어요. 💬`,
 
                             url:
                             pushUrl,
@@ -1030,10 +1099,10 @@ export async function createComment(
                         "comment",
                         {
                             title:
-                                "우리끼리",
+                                `우리끼리 · ${groupName}`,
 
                             body:
-                                "댓글에서 회원님을 언급했어요. 💬",
+                                `${actorNickname}님이 댓글에서 회원님을 언급했어요. 💬`,
 
                             url:
                             pushUrl,
