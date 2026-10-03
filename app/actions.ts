@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import webpush from "web-push";
 import { sendPushToUsers } from "@/lib/push";
 
 export async function createPost(formData: FormData) {
@@ -249,6 +248,7 @@ export async function createPost(formData: FormData) {
                 groupMembers.map(
                     (member) => member.user_id
                 ),
+                "post",
                 {
                     title: "우리끼리",
                     body: "새 게시물이 올라왔어요.",
@@ -343,6 +343,7 @@ export async function toggleLike(postId: number) {
             try {
                 await sendPushToUsers(
                     [post.user_id],
+                    "like",
                     {
                         title: "우리끼리",
                         body: "내 게시물에 좋아요가 달렸어요. ❤️",
@@ -497,6 +498,7 @@ export async function createComment(formData: FormData) {
         try {
             await sendPushToUsers(
                 [post.user_id],
+                "comment",
                 {
                     title: "우리끼리",
                     body: "내 게시물에 새 댓글이 달렸어요. 💬",
@@ -1614,7 +1616,15 @@ export async function savePushSubscription(
     }
 }
 
-export async function sendTestPush() {
+
+export async function updateNotificationPreferences(
+    preferences: {
+        pushEnabled: boolean;
+        postEnabled: boolean;
+        likeEnabled: boolean;
+        commentEnabled: boolean;
+    }
+) {
     const supabase = await createClient();
 
     const {
@@ -1622,116 +1632,42 @@ export async function sendTestPush() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
-    }
-
-    const publicKey =
-        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-    const privateKey =
-        process.env.VAPID_PRIVATE_KEY;
-
-    const subject =
-        process.env.VAPID_SUBJECT;
-
-    if (!publicKey || !privateKey || !subject) {
         throw new Error(
-            "VAPID 환경변수가 설정되지 않았습니다."
+            "로그인이 필요합니다."
         );
     }
 
-    webpush.setVapidDetails(
-        subject,
-        publicKey,
-        privateKey
-    );
-
-    const {
-        data: subscriptions,
-        error,
-    } = await supabase
-        .from("push_subscriptions")
-        .select(
-            "id, endpoint, p256dh, auth"
-        )
-        .eq("user_id", user.id);
+    const { error } = await supabase
+        .from("notification_preferences")
+        .upsert(
+            {
+                user_id: user.id,
+                push_enabled:
+                preferences.pushEnabled,
+                post_enabled:
+                preferences.postEnabled,
+                like_enabled:
+                preferences.likeEnabled,
+                comment_enabled:
+                preferences.commentEnabled,
+                updated_at:
+                    new Date().toISOString(),
+            },
+            {
+                onConflict: "user_id",
+            }
+        );
 
     if (error) {
         console.error(
-            "푸시 구독 조회 실패:",
+            "알림 설정 저장 실패:",
             error
         );
 
         throw new Error(
-            "푸시 구독을 조회하지 못했습니다."
+            "알림 설정을 저장하지 못했습니다."
         );
     }
 
-    if (!subscriptions?.length) {
-        throw new Error(
-            "등록된 푸시 기기가 없습니다."
-        );
-    }
-
-    const payload = JSON.stringify({
-        title: "우리끼리",
-        body: "푸시 알림 테스트입니다. 🔔",
-        url: "/notifications",
-    });
-
-    let successCount = 0;
-
-    for (const subscription of subscriptions) {
-        try {
-            await webpush.sendNotification(
-                {
-                    endpoint:
-                    subscription.endpoint,
-                    keys: {
-                        p256dh:
-                        subscription.p256dh,
-                        auth:
-                        subscription.auth,
-                    },
-                },
-                payload,
-                {
-                    TTL: 60,
-                    urgency: "high",
-                }
-            );
-
-            successCount++;
-        } catch (error: any) {
-            console.error(
-                "푸시 발송 실패:",
-                error
-            );
-
-            // 만료되었거나 더 이상 유효하지 않은 구독
-            if (
-                error?.statusCode === 404 ||
-                error?.statusCode === 410
-            ) {
-                await supabase
-                    .from("push_subscriptions")
-                    .delete()
-                    .eq(
-                        "id",
-                        subscription.id
-                    );
-            }
-        }
-    }
-
-    if (successCount === 0) {
-        throw new Error(
-            "푸시 알림 발송에 실패했습니다."
-        );
-    }
-
-    return {
-        success: true,
-        count: successCount,
-    };
+    revalidatePath("/settings");
 }

@@ -7,7 +7,7 @@ import { InviteLinkButton } from "@/components/invite-link-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { AvatarEditor } from "@/components/avatar-editor";
 import { PushNotificationButton } from "@/components/push-notification-button";
-import { TestPushButton } from "@/components/test-push-button";
+import { NotificationPreferences } from "@/components/notification-preferences";
 
 import {
     logout,
@@ -55,6 +55,20 @@ async function SettingsContent() {
         myAvatarUrl =
             data?.signedUrl ?? null;
     }
+
+    // ========================================
+    // 푸시 알림 설정
+    // ========================================
+
+    const {
+        data: notificationPreferences,
+    } = await supabase
+        .from("notification_preferences")
+        .select(
+            "push_enabled, post_enabled, like_enabled, comment_enabled"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
 
     // ========================================
     // 가입한 그룹
@@ -621,7 +635,26 @@ async function SettingsContent() {
 
                     <PushNotificationButton />
 
-                    <TestPushButton />
+
+                    <NotificationPreferences
+                        initialPushEnabled={
+                            notificationPreferences?.push_enabled ??
+                            true
+                        }
+                        initialPostEnabled={
+                            notificationPreferences?.post_enabled ??
+                            true
+                        }
+                        initialLikeEnabled={
+                            notificationPreferences?.like_enabled ??
+                            true
+                        }
+                        initialCommentEnabled={
+                            notificationPreferences?.comment_enabled ??
+                            true
+                        }
+                    />
+
                 </section>
 
                 {/* ========================================

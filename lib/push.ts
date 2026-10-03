@@ -3,6 +3,11 @@ import "server-only";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+export type PushType =
+    | "post"
+    | "like"
+    | "comment";
+
 type PushPayload = {
     title: string;
     body: string;
@@ -11,6 +16,7 @@ type PushPayload = {
 
 export async function sendPushToUsers(
     userIds: string[],
+    type: PushType,
     payload: PushPayload
 ) {
     const uniqueUserIds = Array.from(
@@ -30,25 +36,100 @@ export async function sendPushToUsers(
     const subject =
         process.env.VAPID_SUBJECT;
 
-    if (!publicKey || !privateKey || !subject) {
+    if (
+        !publicKey ||
+        !privateKey ||
+        !subject
+    ) {
         console.error(
             "Push 발송 실패: VAPID 환경변수가 없습니다."
         );
         return;
     }
 
-    webpush.setVapidDetails(
-        subject,
-        publicKey,
-        privateKey
-    );
-
     const admin = createAdminClient();
 
-    // Admin Client를 사용하는 이유:
-    // push_subscriptions는 본인 것만 조회하도록
-    // RLS가 걸려 있기 때문에 서버에서만
-    // 수신자의 구독 정보를 조회한다.
+    // ========================================
+    // 사용자별 Push 설정 확인
+    //
+    // 설정 행이 없는 기존 사용자는
+    // 모든 Push를 허용한 것으로 처리한다.
+    // ========================================
+
+    const {
+        data: preferences,
+        error: preferenceError,
+    } = await admin
+        .from("notification_preferences")
+        .select(
+            "user_id, push_enabled, post_enabled, like_enabled, comment_enabled"
+        )
+        .in("user_id", uniqueUserIds);
+
+    if (preferenceError) {
+        console.error(
+            "Push 설정 조회 실패:",
+            preferenceError
+        );
+        return;
+    }
+
+    const preferenceMap = new Map(
+        (preferences ?? []).map(
+            (preference) => [
+                preference.user_id,
+                preference,
+            ]
+        )
+    );
+
+    const allowedUserIds =
+        uniqueUserIds.filter((userId) => {
+            const preference =
+                preferenceMap.get(userId);
+
+            // 기존 사용자처럼 설정 행이 없으면
+            // 기본값은 모두 ON
+            if (!preference) {
+                return true;
+            }
+
+            if (!preference.push_enabled) {
+                return false;
+            }
+
+            if (
+                type === "post" &&
+                !preference.post_enabled
+            ) {
+                return false;
+            }
+
+            if (
+                type === "like" &&
+                !preference.like_enabled
+            ) {
+                return false;
+            }
+
+            if (
+                type === "comment" &&
+                !preference.comment_enabled
+            ) {
+                return false;
+            }
+
+            return true;
+        });
+
+    if (allowedUserIds.length === 0) {
+        return;
+    }
+
+    // ========================================
+    // 허용된 사용자들의 기기 구독 조회
+    // ========================================
+
     const {
         data: subscriptions,
         error,
@@ -57,7 +138,7 @@ export async function sendPushToUsers(
         .select(
             "id, user_id, endpoint, p256dh, auth"
         )
-        .in("user_id", uniqueUserIds);
+        .in("user_id", allowedUserIds);
 
     if (error) {
         console.error(
@@ -70,6 +151,12 @@ export async function sendPushToUsers(
     if (!subscriptions?.length) {
         return;
     }
+
+    webpush.setVapidDetails(
+        subject,
+        publicKey,
+        privateKey
+    );
 
     const message =
         JSON.stringify(payload);
@@ -114,7 +201,6 @@ export async function sendPushToUsers(
                         statusCode ?? error
                     );
 
-                    // 만료/해지된 Push 구독 자동 정리
                     if (
                         statusCode === 404 ||
                         statusCode === 410
