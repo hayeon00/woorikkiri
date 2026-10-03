@@ -341,26 +341,57 @@ export function CommentForm({
             return;
         }
 
+        // ========================================
+        // 서버 응답을 기다리기 전에
+        // 입력창을 즉시 비워서
+        // 댓글 등록 체감 속도를 높인다.
+        // ========================================
+
         setIsSubmitting(
             true
         );
+
+        formRef.current?.reset();
+
+        setSelectedMentions(
+            []
+        );
+
+        setMentionQuery(
+            null
+        );
+
+        onSubmitted?.();
 
         try {
             await createAction(
                 formData
             );
-
-            formRef.current?.reset();
-
-            setSelectedMentions(
-                []
+        } catch (error) {
+            console.error(
+                "댓글 등록 실패:",
+                error
             );
 
-            setMentionQuery(
-                null
-            );
+            // 등록에 실패했을 경우
+            // 사용자가 작성했던 내용을 복원한다.
+            const input =
+                inputRef.current;
 
-            onSubmitted?.();
+            if (input) {
+                input.value =
+                    content;
+
+                input.focus();
+
+                const length =
+                    input.value.length;
+
+                input.setSelectionRange(
+                    length,
+                    length
+                );
+            }
         } finally {
             setIsSubmitting(
                 false

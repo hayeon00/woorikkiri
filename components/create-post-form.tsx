@@ -392,47 +392,83 @@ export function CreatePostForm({
             }
 
             // ========================================
-            // 사진 직접 Storage 업로드
-            // ========================================
+// 사진 직접 Storage 병렬 업로드
+// ========================================
 
-            for (const image of images) {
-                const extension =
-                    image.name
-                        .split(".")
-                        .pop()
-                        ?.toLowerCase() ||
-                    "jpg";
+            const uploadTasks =
+                images.map(
+                    async (image) => {
+                        const extension =
+                            image.name
+                                .split(".")
+                                .pop()
+                                ?.toLowerCase() ||
+                            "jpg";
 
-                const imagePath =
-                    `${user.id}/${crypto.randomUUID()}.${extension}`;
+                        const imagePath =
+                            `${user.id}/${crypto.randomUUID()}.${extension}`;
 
-                const {
-                    error: uploadError,
-                } =
-                    await supabase.storage
-                        .from(
-                            "post-images"
-                        )
-                        .upload(
-                            imagePath,
-                            image,
-                            {
-                                contentType:
-                                image.type,
-                                upsert: false,
-                            }
+                        const {
+                            error: uploadError,
+                        } =
+                            await supabase.storage
+                                .from(
+                                    "post-images"
+                                )
+                                .upload(
+                                    imagePath,
+                                    image,
+                                    {
+                                        contentType:
+                                        image.type,
+                                        upsert: false,
+                                    }
+                                );
+
+                        if (uploadError) {
+                            throw new Error(
+                                uploadError.message
+                            );
+                        }
+
+                        // 업로드 성공 즉시 기록
+                        // 이후 다른 사진이 실패해도
+                        // catch에서 정리할 수 있음
+                        uploadedImagePaths.push(
+                            imagePath
                         );
 
-                if (uploadError) {
-                    throw new Error(
-                        uploadError.message
-                    );
-                }
-
-                uploadedImagePaths.push(
-                    imagePath
+                        return {
+                            imagePath,
+                            originalIndex:
+                                images.indexOf(
+                                    image
+                                ),
+                        };
+                    }
                 );
-            }
+
+            const uploadResults =
+                await Promise.all(
+                    uploadTasks
+                );
+
+// Promise 실행 완료 순서가 아니라
+// 원래 선택한 사진 순서로 복구
+            uploadResults.sort(
+                (a, b) =>
+                    a.originalIndex -
+                    b.originalIndex
+            );
+
+            uploadedImagePaths.splice(
+                0,
+                uploadedImagePaths.length,
+                ...uploadResults.map(
+                    (result) =>
+                        result.imagePath
+                )
+            );
 
             const formData =
                 new FormData();

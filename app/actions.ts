@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUsers } from "@/lib/push";
@@ -243,24 +244,27 @@ export async function createPost(formData: FormData) {
             );
         }
 
-        try {
-            await sendPushToUsers(
-                groupMembers.map(
-                    (member) => member.user_id
-                ),
-                "post",
-                {
-                    title: "우리끼리",
-                    body: "새 게시물이 올라왔어요.",
-                    url: `/?group=${groupId}&post=${post.id}`,
-                }
-            );
-        } catch (pushError) {
-            console.error(
-                "게시물 Push 발송 실패:",
-                pushError
-            );
-        }
+        after(async () => {
+            try {
+                await sendPushToUsers(
+                    groupMembers.map(
+                        (member) =>
+                            member.user_id
+                    ),
+                    "post",
+                    {
+                        title: "우리끼리",
+                        body: "새 게시물이 올라왔어요.",
+                        url: `/?group=${groupId}&post=${post.id}`,
+                    }
+                );
+            } catch (pushError) {
+                console.error(
+                    "게시물 Push 발송 실패:",
+                    pushError
+                );
+            }
+        });
     }
 
     revalidatePath("/");
@@ -479,30 +483,32 @@ export async function toggleLike(
             // 좋아요를 추가했을 때만 Push
             // ========================================
 
-            try {
-                await sendPushToUsers(
-                    [
-                        post.user_id,
-                    ],
-                    "like",
-                    {
-                        title:
-                            "우리끼리",
+            after(async () => {
+                try {
+                    await sendPushToUsers(
+                        [
+                            post.user_id,
+                        ],
+                        "like",
+                        {
+                            title:
+                                "우리끼리",
 
-                        body:
-                            "내 게시물에 좋아요가 달렸어요. ❤️",
+                            body:
+                                "내 게시물에 좋아요가 달렸어요. ❤️",
 
-                        url: `/?group=${post.group_id}&post=${post.id}`,
-                    }
-                );
-            } catch (
-                pushError
-                ) {
-                console.error(
-                    "좋아요 Push 발송 실패:",
+                            url: `/?group=${post.group_id}&post=${post.id}`,
+                        }
+                    );
+                } catch (
                     pushError
-                );
-            }
+                    ) {
+                    console.error(
+                        "좋아요 Push 발송 실패:",
+                        pushError
+                    );
+                }
+            });
         }
     }
 
@@ -965,72 +971,87 @@ export async function createComment(
     const pushUrl =
         `/?group=${post.group_id}&post=${postId}&comment=${comment.id}`;
 
-    try {
-        if (
-            commentRecipients.length >
-            0
-        ) {
-            await sendPushToUsers(
-                commentRecipients,
-                "comment",
-                {
-                    title:
-                        "우리끼리",
+    after(async () => {
+        try {
+            const pushTasks:
+                Promise<unknown>[] = [];
 
-                    body:
-                        "내 게시물에 새 댓글이 달렸어요. 💬",
+            if (
+                commentRecipients.length >
+                0
+            ) {
+                pushTasks.push(
+                    sendPushToUsers(
+                        commentRecipients,
+                        "comment",
+                        {
+                            title:
+                                "우리끼리",
 
-                    url:
-                    pushUrl,
-                }
+                            body:
+                                "내 게시물에 새 댓글이 달렸어요. 💬",
+
+                            url:
+                            pushUrl,
+                        }
+                    )
+                );
+            }
+
+            if (
+                replyRecipients.length >
+                0
+            ) {
+                pushTasks.push(
+                    sendPushToUsers(
+                        replyRecipients,
+                        "comment",
+                        {
+                            title:
+                                "우리끼리",
+
+                            body:
+                                "내 댓글에 답글이 달렸어요. 💬",
+
+                            url:
+                            pushUrl,
+                        }
+                    )
+                );
+            }
+
+            if (
+                mentionRecipients.length >
+                0
+            ) {
+                pushTasks.push(
+                    sendPushToUsers(
+                        mentionRecipients,
+                        "comment",
+                        {
+                            title:
+                                "우리끼리",
+
+                            body:
+                                "댓글에서 회원님을 언급했어요. 💬",
+
+                            url:
+                            pushUrl,
+                        }
+                    )
+                );
+            }
+
+            await Promise.all(
+                pushTasks
+            );
+        } catch (pushError) {
+            console.error(
+                "댓글 Push 발송 실패:",
+                pushError
             );
         }
-
-        if (
-            replyRecipients.length >
-            0
-        ) {
-            await sendPushToUsers(
-                replyRecipients,
-                "comment",
-                {
-                    title:
-                        "우리끼리",
-
-                    body:
-                        "내 댓글에 답글이 달렸어요. 💬",
-
-                    url:
-                    pushUrl,
-                }
-            );
-        }
-
-        if (
-            mentionRecipients.length >
-            0
-        ) {
-            await sendPushToUsers(
-                mentionRecipients,
-                "comment",
-                {
-                    title:
-                        "우리끼리",
-
-                    body:
-                        "댓글에서 회원님을 언급했어요. 💬",
-
-                    url:
-                    pushUrl,
-                }
-            );
-        }
-    } catch (pushError) {
-        console.error(
-            "댓글 Push 발송 실패:",
-            pushError
-        );
-    }
+    });
 
     revalidatePath("/");
     revalidatePath(

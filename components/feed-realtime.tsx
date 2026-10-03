@@ -15,35 +15,55 @@ export function FeedRealtime({
     const router = useRouter();
 
     useEffect(() => {
-        const supabase = createClient();
+        const supabase =
+            createClient();
 
-        let channel: ReturnType<
+        let channel:
+            | ReturnType<
             typeof supabase.channel
-        > | null = null;
+        >
+            | null = null;
 
         let refreshTimer:
-            | ReturnType<typeof setTimeout>
+            | ReturnType<
+            typeof setTimeout
+        >
             | null = null;
 
         let cancelled = false;
 
+        // ========================================
+        // 피드 새로고침
+        //
+        // 짧은 시간에 여러 Realtime 이벤트가 와도
+        // 한 번만 refresh
+        // ========================================
+
         const refreshFeed = () => {
             if (refreshTimer) {
-                clearTimeout(refreshTimer);
+                clearTimeout(
+                    refreshTimer
+                );
             }
 
-            refreshTimer = setTimeout(() => {
-                if (!cancelled) {
-                    router.refresh();
-                }
-            }, 200);
+            refreshTimer =
+                setTimeout(() => {
+                    if (
+                        !cancelled
+                    ) {
+                        router.refresh();
+                    }
+                }, 80);
         };
 
         async function startRealtime() {
             const {
-                data: { session },
+                data: {
+                    session,
+                },
                 error,
-            } = await supabase.auth.getSession();
+            } =
+                await supabase.auth.getSession();
 
             if (
                 cancelled ||
@@ -61,79 +81,108 @@ export function FeedRealtime({
                 return;
             }
 
-            channel = supabase
-                .channel(
-                    `feed-realtime-${groupId}`
-                )
+            channel =
+                supabase
+                    .channel(
+                        `feed-realtime-${groupId}`
+                    )
 
-                // 현재 그룹의 게시물만
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "posts",
-                        filter: `group_id=eq.${groupId}`,
-                    },
-                    refreshFeed
-                )
+                    // ========================================
+                    // 현재 그룹 게시물
+                    // ========================================
 
-                // comments / likes는 post_id만 있어서
-                // RLS가 허용한 변경을 받은 뒤 갱신
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "comments",
-                    },
-                    refreshFeed
-                )
+                    .on(
+                        "postgres_changes",
+                        {
+                            event: "*",
+                            schema:
+                                "public",
+                            table:
+                                "posts",
+                            filter:
+                                `group_id=eq.${groupId}`,
+                        },
+                        refreshFeed
+                    )
 
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "likes",
-                    },
-                    refreshFeed
-                )
+                    // ========================================
+                    // 댓글
+                    // ========================================
 
-                // 로그인 사용자에게 허용된 알림 변경
-                .on(
-                    "postgres_changes",
-                    {
-                        event: "*",
-                        schema: "public",
-                        table: "notifications",
-                    },
-                    refreshFeed
-                )
+                    .on(
+                        "postgres_changes",
+                        {
+                            event: "*",
+                            schema:
+                                "public",
+                            table:
+                                "comments",
+                        },
+                        refreshFeed
+                    )
 
-                .subscribe((status) => {
-                    if (status === "CHANNEL_ERROR") {
-                        console.error(
-                            "[Realtime] 채널 연결 오류"
-                        );
-                    }
-                });
+                    // ========================================
+                    // 좋아요
+                    // ========================================
+
+                    .on(
+                        "postgres_changes",
+                        {
+                            event: "*",
+                            schema:
+                                "public",
+                            table:
+                                "likes",
+                        },
+                        refreshFeed
+                    )
+
+                    // notifications는 제거
+                    //
+                    // 알림 생성/삭제 때문에
+                    // 현재 피드 전체를 다시
+                    // 가져올 필요가 없음
+
+                    .subscribe(
+                        (
+                            status
+                        ) => {
+                            if (
+                                status ===
+                                "CHANNEL_ERROR"
+                            ) {
+                                console.error(
+                                    "[Realtime] 채널 연결 오류"
+                                );
+                            }
+                        }
+                    );
         }
 
-        startRealtime();
+        void startRealtime();
 
         return () => {
-            cancelled = true;
+            cancelled =
+                true;
 
-            if (refreshTimer) {
-                clearTimeout(refreshTimer);
+            if (
+                refreshTimer
+            ) {
+                clearTimeout(
+                    refreshTimer
+                );
             }
 
             if (channel) {
-                supabase.removeChannel(channel);
+                void supabase.removeChannel(
+                    channel
+                );
             }
         };
-    }, [groupId, router]);
+    }, [
+        groupId,
+        router,
+    ]);
 
     return null;
 }
