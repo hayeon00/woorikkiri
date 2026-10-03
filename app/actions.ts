@@ -2089,7 +2089,6 @@ export async function deleteAccount(
     redirect("/auth/login");
 
 }
-
 export async function savePushSubscription(
     subscription: {
         endpoint: string;
@@ -2100,31 +2099,47 @@ export async function savePushSubscription(
     },
     userAgent?: string
 ) {
-    const supabase = await createClient();
+    const supabase =
+        await createClient();
 
     const {
         data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-        throw new Error("로그인이 필요합니다.");
+        throw new Error(
+            "로그인이 필요합니다."
+        );
     }
 
-    const { error } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-            {
-                user_id: user.id,
-                endpoint: subscription.endpoint,
-                p256dh: subscription.keys.p256dh,
-                auth: subscription.keys.auth,
-                user_agent: userAgent ?? null,
-                updated_at: new Date().toISOString(),
-            },
-            {
-                onConflict: "endpoint",
-            }
+    if (
+        !subscription.endpoint ||
+        !subscription.keys.p256dh ||
+        !subscription.keys.auth
+    ) {
+        throw new Error(
+            "잘못된 Push 구독 정보입니다."
         );
+    }
+
+    const {
+        error,
+    } = await supabase.rpc(
+        "register_push_subscription",
+        {
+            p_endpoint:
+            subscription.endpoint,
+
+            p_p256dh:
+            subscription.keys.p256dh,
+
+            p_auth:
+            subscription.keys.auth,
+
+            p_user_agent:
+                userAgent ?? null,
+        }
+    );
 
     if (error) {
         console.error(
@@ -2137,7 +2152,6 @@ export async function savePushSubscription(
         );
     }
 }
-
 
 export async function updateNotificationPreferences(
     preferences: {

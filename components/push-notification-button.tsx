@@ -53,18 +53,21 @@ export function PushNotificationButton() {
             );
         }
 
-        await savePushSubscription({
-            endpoint:
-            json.endpoint,
+        await savePushSubscription(
+            {
+                endpoint:
+                json.endpoint,
 
-            keys: {
-                p256dh:
-                json.keys.p256dh,
+                keys: {
+                    p256dh:
+                    json.keys.p256dh,
 
-                auth:
-                json.keys.auth,
+                    auth:
+                    json.keys.auth,
+                },
             },
-        });
+            navigator.userAgent
+        );
     }
 
     // ========================================
