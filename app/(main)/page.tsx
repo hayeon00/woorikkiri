@@ -12,6 +12,7 @@ import { PostImageSlider } from "@/components/post-image-slider";
 import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
+import { PushOnboarding } from "@/components/push-onboarding";
 
 import {
     toggleLike,
@@ -946,6 +947,8 @@ async function Feed({
                             </section>
 
                             <div className="space-y-3 px-3 pt-3 sm:px-5 sm:pt-5 xl:px-6 xl:pt-6">
+
+                                <PushOnboarding />
 
                                 {/* 글쓰기 */}
                                 <CreatePostForm
