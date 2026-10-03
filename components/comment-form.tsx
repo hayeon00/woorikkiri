@@ -18,6 +18,24 @@ type ReplyTarget = {
     nickname: string;
 } | null;
 
+export type OptimisticCommentInput = {
+    tempId: string;
+    content: string;
+    createdAt: string;
+
+    parentId: number | null;
+
+    replyToUser: {
+        userId: string;
+        nickname: string;
+    } | null;
+
+    mentions: {
+        userId: string;
+        nickname: string;
+    }[];
+};
+
 type CommentFormProps = {
     postId: number;
     avatarUrl: string | null;
@@ -26,11 +44,26 @@ type CommentFormProps = {
 
     createAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) =>
+        | void
+        | Promise<
+        | {
+        commentId: number;
+    }
+        | undefined
+    >;
 
     replyTarget?: ReplyTarget;
+
     onCancelReply?: () => void;
-    onSubmitted?: () => void;
+
+    onSubmitted?: (
+        comment: OptimisticCommentInput
+    ) => void;
+
+    onSubmitFailed?: (
+        tempId: string
+    ) => void;
 };
 
 export function CommentForm({
@@ -42,6 +75,7 @@ export function CommentForm({
                                 replyTarget = null,
                                 onCancelReply,
                                 onSubmitted,
+                                onSubmitFailed,
                             }: CommentFormProps) {
     const formRef =
         useRef<HTMLFormElement>(null);
@@ -57,13 +91,9 @@ export function CommentForm({
     const [
         mentionQuery,
         setMentionQuery,
-    ] = useState<string | null>(
-        null
-    );
-
-    // ========================================
-    // 사용자가 자동완성에서 직접 선택한 멘션만 저장
-    // ========================================
+    ] = useState<
+        string | null
+    >(null);
 
     const [
         selectedMentions,
@@ -72,10 +102,6 @@ export function CommentForm({
 
     // ========================================
     // 답글 선택
-    //
-    // @닉네임은 입력창에 보여주지만
-    // mention_user_ids에는 넣지 않는다.
-    // 서버에서는 parent_id를 보고 reply로 판단한다.
     // ========================================
 
     useEffect(() => {
@@ -93,7 +119,6 @@ export function CommentForm({
         input.value =
             `@${replyTarget.nickname} `;
 
-        // 답글 대상은 직접 멘션이 아님
         setSelectedMentions(
             []
         );
@@ -114,7 +139,7 @@ export function CommentForm({
     }, [replyTarget]);
 
     // ========================================
-    // 멘션 자동완성 후보
+    // 멘션 후보
     // ========================================
 
     const mentionCandidates =
@@ -123,7 +148,6 @@ export function CommentForm({
             : members
                 .filter(
                     (member) => {
-                        // 자기 자신 제외
                         if (
                             member.userId ===
                             currentUserId
@@ -147,10 +171,7 @@ export function CommentForm({
                             );
                     }
                 )
-                .slice(
-                    0,
-                    5
-                );
+                .slice(0, 5);
 
     // ========================================
     // 입력 변경
@@ -162,11 +183,6 @@ export function CommentForm({
         const value =
             event.target.value;
 
-        // ========================================
-        // 이미 선택했던 멘션 중
-        // 실제 입력창에서 삭제된 멘션 제거
-        // ========================================
-
         setSelectedMentions(
             (current) =>
                 current.filter(
@@ -176,10 +192,6 @@ export function CommentForm({
                         )
                 )
         );
-
-        // ========================================
-        // 현재 커서 앞에서 @ 입력 중인지 확인
-        // ========================================
 
         const cursor =
             event.target
@@ -211,7 +223,7 @@ export function CommentForm({
     }
 
     // ========================================
-    // 직접 멘션 선택
+    // 멘션 선택
     // ========================================
 
     function selectMention(
@@ -258,11 +270,8 @@ export function CommentForm({
             );
 
         input.value =
-            replaced +
-            after;
+            replaced + after;
 
-        // 직접 자동완성에서 선택한 사람만
-        // 실제 mention_user_ids로 전달
         setSelectedMentions(
             (current) => {
                 if (
@@ -320,7 +329,7 @@ export function CommentForm({
     }
 
     // ========================================
-    // 등록
+    // 댓글 등록
     // ========================================
 
     async function handleSubmit(
@@ -341,11 +350,54 @@ export function CommentForm({
             return;
         }
 
+        const submittedReplyTarget =
+            replyTarget;
+
+        const submittedMentions = [
+            ...selectedMentions,
+        ];
+
+        const tempId =
+            crypto.randomUUID();
+
         // ========================================
-        // 서버 응답을 기다리기 전에
-        // 입력창을 즉시 비워서
-        // 댓글 등록 체감 속도를 높인다.
+        // 서버보다 먼저 화면에 댓글 표시
         // ========================================
+
+        onSubmitted?.({
+            tempId,
+            content,
+
+            createdAt:
+                new Date().toISOString(),
+
+            parentId:
+                submittedReplyTarget
+                    ?.commentId ??
+                null,
+
+            replyToUser:
+                submittedReplyTarget
+                    ? {
+                        userId:
+                        submittedReplyTarget.userId,
+
+                        nickname:
+                        submittedReplyTarget.nickname,
+                    }
+                    : null,
+
+            mentions:
+                submittedMentions.map(
+                    (member) => ({
+                        userId:
+                        member.userId,
+
+                        nickname:
+                        member.nickname,
+                    })
+                ),
+        });
 
         setIsSubmitting(
             true
@@ -361,8 +413,6 @@ export function CommentForm({
             null
         );
 
-        onSubmitted?.();
-
         try {
             await createAction(
                 formData
@@ -373,8 +423,12 @@ export function CommentForm({
                 error
             );
 
-            // 등록에 실패했을 경우
-            // 사용자가 작성했던 내용을 복원한다.
+            // 임시 댓글 제거
+            onSubmitFailed?.(
+                tempId
+            );
+
+            // 작성 내용 복구
             const input =
                 inputRef.current;
 
@@ -401,18 +455,13 @@ export function CommentForm({
 
     return (
         <div className="sticky bottom-0 z-20 mt-4 border-t border-black/[0.05] bg-white/95 px-1 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-3 backdrop-blur-xl">
-            {/* ========================================
-                답글 작성 중
-            ======================================== */}
+            {/* 답글 작성 중 */}
 
             {replyTarget && (
                 <div className="mb-2 ml-9 flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
                     <p className="min-w-0 truncate text-[10px] text-gray-500">
                         <strong className="font-black text-blue-500">
-                            @
-                            {
-                                replyTarget.nickname
-                            }
+                            @{replyTarget.nickname}
                         </strong>
 
                         <span>
@@ -433,19 +482,13 @@ export function CommentForm({
                 </div>
             )}
 
-            {/* ========================================
-                멘션 자동완성
-
-                sticky 입력창 바로 위에 표시
-            ======================================== */}
+            {/* 멘션 자동완성 */}
 
             {mentionCandidates.length >
                 0 && (
                     <div className="absolute bottom-[calc(100%+6px)] left-9 right-1 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                         {mentionCandidates.map(
-                            (
-                                member
-                            ) => (
+                            (member) => (
                                 <button
                                     key={
                                         member.userId
@@ -492,9 +535,7 @@ export function CommentForm({
                     </div>
                 )}
 
-            {/* ========================================
-                댓글 입력
-            ======================================== */}
+            {/* 댓글 입력 */}
 
             <form
                 ref={
@@ -523,11 +564,8 @@ export function CommentForm({
                     />
                 )}
 
-                {/* 직접 선택한 멘션만 서버로 전송 */}
                 {selectedMentions.map(
-                    (
-                        member
-                    ) => (
+                    (member) => (
                         <input
                             key={
                                 member.userId
@@ -541,7 +579,6 @@ export function CommentForm({
                     )
                 )}
 
-                {/* 내 프로필 */}
                 {avatarUrl ? (
                     <img
                         src={

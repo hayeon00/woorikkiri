@@ -11,6 +11,11 @@ import { useSearchParams } from "next/navigation";
 import { CommentDeleteButton } from "@/components/comment-delete-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 
+type LinkedUser = {
+    userId: string;
+    nickname: string;
+};
+
 type Comment = {
     id: number;
     content: string;
@@ -26,19 +31,40 @@ type Comment = {
 
     avatar_url: string | null;
 
-    mentions?: {
-        userId: string;
-        nickname: string;
-    }[];
+    mentions?: LinkedUser[];
 
-    replyToUser?: {
-        userId: string;
-        nickname: string;
-    } | null;
+    replyToUser?: LinkedUser | null;
+};
+
+type OptimisticComment = {
+    tempId: string;
+
+    content: string;
+    created_at: string;
+
+    user_id: string;
+
+    parent_id: number | null;
+    reply_to_user_id: string | null;
+
+    profiles: {
+        nickname: string | null;
+    };
+
+    avatar_url: string | null;
+
+    mentions: LinkedUser[];
+
+    replyToUser: LinkedUser | null;
+
+    pending: true;
 };
 
 type CommentListProps = {
     comments: Comment[];
+
+    optimisticComments:
+        OptimisticComment[];
 
     currentUserId: string;
 
@@ -51,10 +77,12 @@ type CommentListProps = {
     ) => void;
 };
 
-const INITIAL_THREAD_COUNT = 3;
+const INITIAL_THREAD_COUNT =
+    3;
 
 export function CommentList({
                                 comments,
+                                optimisticComments,
                                 currentUserId,
                                 deleteAction,
                                 onReply,
@@ -72,7 +100,8 @@ export function CommentList({
     const [
         isExpanded,
         setIsExpanded,
-    ] = useState(false);
+    ] =
+        useState(false);
 
     const sortedComments = [
         ...comments,
@@ -93,9 +122,15 @@ export function CommentList({
                 null
         );
 
+    const optimisticRootComments =
+        optimisticComments.filter(
+            (comment) =>
+                comment.parent_id ===
+                null
+        );
+
     // ========================================
-    // 알림 대상 댓글이 숨겨져 있으면
-    // 자동으로 댓글 전체 펼치기
+    // 알림 대상 댓글 자동 펼치기
     // ========================================
 
     useEffect(() => {
@@ -119,8 +154,6 @@ export function CommentList({
             return;
         }
 
-        // 답글이라면 부모 댓글을 찾고,
-        // 일반 댓글이면 자기 자신이 루트 댓글
         const targetRootId =
             targetComment.parent_id ??
             targetComment.id;
@@ -132,13 +165,13 @@ export function CommentList({
                     targetRootId
             );
 
-        // 처음 3개 이후에 있는 댓글이면
-        // 자동으로 전체 댓글 펼치기
         if (
             targetRootIndex >=
             INITIAL_THREAD_COUNT
         ) {
-            setIsExpanded(true);
+            setIsExpanded(
+                true
+            );
         }
     }, [
         targetCommentId,
@@ -162,7 +195,10 @@ export function CommentList({
         );
 
     if (
-        sortedComments.length === 0
+        sortedComments.length ===
+        0 &&
+        optimisticComments.length ===
+        0
     ) {
         return null;
     }
@@ -174,7 +210,18 @@ export function CommentList({
                     (comment) => {
                         const replies =
                             sortedComments.filter(
-                                (reply) =>
+                                (
+                                    reply
+                                ) =>
+                                    reply.parent_id ===
+                                    comment.id
+                            );
+
+                        const optimisticReplies =
+                            optimisticComments.filter(
+                                (
+                                    reply
+                                ) =>
                                     reply.parent_id ===
                                     comment.id
                             );
@@ -200,38 +247,69 @@ export function CommentList({
                                     }
                                 />
 
-                                {replies.length >
-                                    0 && (
-                                        <div className="ml-8 mt-3 space-y-3 border-l border-gray-100 pl-3">
-                                            {replies.map(
-                                                (
-                                                    reply
-                                                ) => (
-                                                    <CommentItem
-                                                        key={
-                                                            reply.id
-                                                        }
-                                                        comment={
-                                                            reply
-                                                        }
-                                                        currentUserId={
-                                                            currentUserId
-                                                        }
-                                                        deleteAction={
-                                                            deleteAction
-                                                        }
-                                                        onReply={
-                                                            onReply
-                                                        }
-                                                        isReply
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-                                    )}
+                                {(replies.length >
+                                    0 ||
+                                    optimisticReplies.length >
+                                    0) && (
+                                    <div className="ml-8 mt-3 space-y-3 border-l border-gray-100 pl-3">
+                                        {replies.map(
+                                            (
+                                                reply
+                                            ) => (
+                                                <CommentItem
+                                                    key={
+                                                        reply.id
+                                                    }
+                                                    comment={
+                                                        reply
+                                                    }
+                                                    currentUserId={
+                                                        currentUserId
+                                                    }
+                                                    deleteAction={
+                                                        deleteAction
+                                                    }
+                                                    onReply={
+                                                        onReply
+                                                    }
+                                                    isReply
+                                                />
+                                            )
+                                        )}
+
+                                        {optimisticReplies.map(
+                                            (
+                                                reply
+                                            ) => (
+                                                <OptimisticCommentItem
+                                                    key={
+                                                        reply.tempId
+                                                    }
+                                                    comment={
+                                                        reply
+                                                    }
+                                                    isReply
+                                                />
+                                            )
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     }
+                )}
+
+                {optimisticRootComments.map(
+                    (comment) => (
+                        <OptimisticCommentItem
+                            key={
+                                comment.tempId
+                            }
+                            comment={
+                                comment
+                            }
+                        />
+                    )
                 )}
             </div>
 
@@ -257,6 +335,89 @@ export function CommentList({
         </div>
     );
 }
+
+// ========================================
+// 서버 저장 전 임시 댓글
+// ========================================
+
+function OptimisticCommentItem({
+                                   comment,
+                                   isReply = false,
+                               }: {
+    comment: OptimisticComment;
+    isReply?: boolean;
+}) {
+    return (
+        <div className="rounded-xl opacity-70">
+            <div className="flex items-start gap-2.5">
+                {comment.avatar_url ? (
+                    <ProfileImageViewer
+                        src={
+                            comment.avatar_url
+                        }
+                        alt={`${
+                            comment.profiles
+                                ?.nickname ??
+                            "사용자"
+                        } 프로필 사진`}
+                        className={
+                            isReply
+                                ? "h-6 w-6 rounded-full object-cover"
+                                : "h-7 w-7 rounded-full object-cover"
+                        }
+                    />
+                ) : (
+                    <div
+                        className={
+                            isReply
+                                ? "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
+                                : "flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400"
+                        }
+                    >
+                        <UserIcon />
+                    </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                    <div className="text-[12px] leading-5">
+                        <span className="mr-2 font-black">
+                            {comment
+                                    .profiles
+                                    .nickname ??
+                                "사용자"}
+                        </span>
+
+                        <span className="break-words text-gray-700">
+                            {renderCommentContent(
+                                comment.content,
+                                comment.mentions ??
+                                [],
+                                comment.replyToUser ??
+                                null
+                            )}
+                        </span>
+                    </div>
+
+                    <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-[9px] font-medium text-gray-400">
+                            방금
+                        </span>
+
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
+                            <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-gray-300 border-t-gray-600" />
+
+                            전송 중...
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ========================================
+// 실제 서버 댓글
+// ========================================
 
 function CommentItem({
                          comment,
@@ -285,10 +446,6 @@ function CommentItem({
             className="scroll-mt-28 rounded-xl transition"
         >
             <div className="flex items-start gap-2.5">
-                {/* ========================================
-                    프로필 사진
-                ======================================== */}
-
                 {comment.avatar_url ? (
                     <ProfileImageViewer
                         src={
@@ -318,17 +475,14 @@ function CommentItem({
                 )}
 
                 <div className="min-w-0 flex-1">
-                    {/* ========================================
-                        닉네임 + 댓글
-                    ======================================== */}
-
                     <div className="text-[12px] leading-5">
                         {comment.user_id ? (
                             <Link
                                 href={`/profile/${comment.user_id}`}
                                 className="mr-2 font-black transition hover:text-gray-500"
                             >
-                                {comment.profiles
+                                {comment
+                                        .profiles
                                         ?.nickname ??
                                     "사용자"}
                             </Link>
@@ -348,10 +502,6 @@ function CommentItem({
                             )}
                         </span>
                     </div>
-
-                    {/* ========================================
-                        시간 + 답글
-                    ======================================== */}
 
                     <div className="mt-0.5 flex items-center gap-2.5">
                         <time
@@ -380,10 +530,6 @@ function CommentItem({
                         )}
                     </div>
 
-                    {/* ========================================
-                        삭제
-                    ======================================== */}
-
                     {comment.user_id ===
                         currentUserId && (
                             <CommentDeleteButton
@@ -403,29 +549,13 @@ function CommentItem({
 
 // ========================================
 // 댓글 내용
-//
-// 실제 멘션 / 답글 대상의 @닉네임만
-// 프로필 링크로 표시
 // ========================================
 
 function renderCommentContent(
     content: string,
-    mentions: {
-        userId: string;
-        nickname: string;
-    }[],
-    replyToUser: {
-        userId: string;
-        nickname: string;
-    } | null
+    mentions: LinkedUser[],
+    replyToUser: LinkedUser | null
 ): ReactNode {
-    // ========================================
-    // 실제로 연결된 사용자 목록
-    //
-    // 1. 직접 멘션
-    // 2. 답글 대상
-    // ========================================
-
     const linkedUsers = [
         ...mentions,
     ];
@@ -449,16 +579,6 @@ function renderCommentContent(
         return content;
     }
 
-    // ========================================
-    // 닉네임이 긴 사람부터 검사
-    //
-    // 예:
-    // 철수
-    // 철수아빠
-    //
-    // 같은 경우 철수아빠를 먼저 처리
-    // ========================================
-
     const sortedUsers = [
         ...linkedUsers,
     ].sort(
@@ -467,8 +587,8 @@ function renderCommentContent(
             a.nickname.length
     );
 
-    const result: ReactNode[] =
-        [];
+    const result:
+        ReactNode[] = [];
 
     let remaining =
         content;
@@ -483,10 +603,7 @@ function renderCommentContent(
             -1;
 
         let matchedUser:
-            | {
-            userId: string;
-            nickname: string;
-        }
+            | LinkedUser
             | null = null;
 
         for (
@@ -503,12 +620,10 @@ function renderCommentContent(
 
             if (
                 index !== -1 &&
-                (
-                    earliestIndex ===
+                (earliestIndex ===
                     -1 ||
                     index <
-                    earliestIndex
-                )
+                    earliestIndex)
             ) {
                 earliestIndex =
                     index;
@@ -518,9 +633,9 @@ function renderCommentContent(
             }
         }
 
-        // 더 이상 실제 멘션이 없음
         if (
-            earliestIndex === -1 ||
+            earliestIndex ===
+            -1 ||
             !matchedUser
         ) {
             result.push(
@@ -534,7 +649,6 @@ function renderCommentContent(
             break;
         }
 
-        // 멘션 앞의 일반 텍스트
         if (
             earliestIndex > 0
         ) {
@@ -553,8 +667,6 @@ function renderCommentContent(
         const mentionText =
             `@${matchedUser.nickname}`;
 
-        // 실제 멘션 / 답글 대상만
-        // 파란색 프로필 링크
         result.push(
             <Link
                 key={`mention-${matchedUser.userId}-${keyIndex++}`}
@@ -581,7 +693,7 @@ function renderCommentContent(
 }
 
 // ========================================
-// 댓글 날짜
+// 날짜
 // ========================================
 
 function formatCommentDate(
@@ -598,14 +710,19 @@ function formatCommentDate(
             {
                 timeZone:
                     "Asia/Seoul",
+
                 month:
                     "numeric",
+
                 day:
                     "numeric",
+
                 hour:
                     "numeric",
+
                 minute:
                     "2-digit",
+
                 hour12:
                     false,
             }
@@ -644,10 +761,6 @@ function formatCommentDate(
 
     return `${month}. ${day}. ${hour}:${minute}`;
 }
-
-// ========================================
-// 아이콘
-// ========================================
 
 function UserIcon() {
     return (

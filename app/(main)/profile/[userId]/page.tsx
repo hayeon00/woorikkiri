@@ -914,7 +914,7 @@ async function ProfileContent({
     ) {
         "use server";
 
-        await createComment(
+        return createComment(
             formData
         );
     }

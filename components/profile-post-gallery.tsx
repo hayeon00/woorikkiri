@@ -83,7 +83,14 @@ type ProfilePostGalleryProps = {
 
     createCommentAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) =>
+        | void
+        | Promise<
+        | {
+        commentId: number;
+    }
+        | undefined
+    >;
 
     deleteCommentAction: (
         formData: FormData

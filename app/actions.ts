@@ -1057,6 +1057,10 @@ export async function createComment(
     revalidatePath(
         "/notifications"
     );
+
+    return {
+        commentId: comment.id,
+    };
 }
 export async function updatePost(formData: FormData) {
     const supabase = await createClient();
