@@ -35,78 +35,151 @@ async function SettingsContent() {
     }
 
     // ========================================
+    // 필요한 데이터 병렬 조회
+    // ========================================
+
+    const [
+        profileResult,
+        notificationPreferencesResult,
+        membershipsResult,
+    ] = await Promise.all([
+        supabase
+            .from("profiles")
+            .select(
+                "nickname, avatar_url"
+            )
+            .eq(
+                "id",
+                user.id
+            )
+            .single(),
+
+        supabase
+            .from(
+                "notification_preferences"
+            )
+            .select(
+                "push_enabled, post_enabled, like_enabled, comment_enabled"
+            )
+            .eq(
+                "user_id",
+                user.id
+            )
+            .maybeSingle(),
+
+        supabase
+            .from("group_members")
+            .select(`
+                group_id,
+                joined_at,
+                sort_order,
+
+                groups (
+                    id,
+                    name,
+                    invite_code,
+                    owner_id,
+                    created_at
+                )
+            `)
+            .eq(
+                "user_id",
+                user.id
+            )
+            .order(
+                "sort_order",
+                {
+                    ascending: true,
+                }
+            )
+            .order(
+                "joined_at",
+                {
+                    ascending: true,
+                }
+            ),
+    ]);
+
+    // ========================================
     // 프로필
     // ========================================
 
-    const { data: myProfile } = await supabase
-        .from("profiles")
-        .select("nickname, avatar_url")
-        .eq("id", user.id)
-        .single();
+    const myProfile =
+        profileResult.data;
 
-    let myAvatarUrl: string | null = null;
-
-    if (myProfile?.avatar_url) {
-        const { data } = await supabase.storage
-            .from("avatars")
-            .createSignedUrl(
-                myProfile.avatar_url,
-                60 * 60
-            );
-
-        myAvatarUrl =
-            data?.signedUrl ?? null;
+    if (
+        profileResult.error
+    ) {
+        console.error(
+            "프로필 조회 실패:",
+            profileResult.error
+        );
     }
 
     // ========================================
     // 푸시 알림 설정
     // ========================================
 
-    const {
-        data: notificationPreferences,
-    } = await supabase
-        .from("notification_preferences")
-        .select(
-            "push_enabled, post_enabled, like_enabled, comment_enabled"
-        )
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const notificationPreferences =
+        notificationPreferencesResult.data;
+
+    if (
+        notificationPreferencesResult.error
+    ) {
+        console.error(
+            "알림 설정 조회 실패:",
+            notificationPreferencesResult.error
+        );
+    }
 
     // ========================================
     // 가입한 그룹
     // ========================================
 
-    const {
-        data: memberships,
-        error: membershipError,
-    } = await supabase
-        .from("group_members")
-        .select(`
-            group_id,
-            joined_at,
-            sort_order,
+    const memberships =
+        membershipsResult.data;
 
-            groups (
-                id,
-                name,
-                invite_code,
-                owner_id,
-                created_at
-            )
-        `)
-        .eq("user_id", user.id)
-        .order("sort_order", {
-            ascending: true,
-        })
-        .order("joined_at", {
-            ascending: true,
-        });
-
-    if (membershipError) {
+    if (
+        membershipsResult.error
+    ) {
         console.error(
             "그룹 조회 실패:",
-            membershipError
+            membershipsResult.error
         );
+    }
+
+    // ========================================
+    // 프로필 사진 Signed URL
+    // ========================================
+
+    let myAvatarUrl:
+        | string
+        | null = null;
+
+    if (
+        myProfile?.avatar_url
+    ) {
+        const {
+            data,
+            error,
+        } =
+            await supabase.storage
+                .from("avatars")
+                .createSignedUrl(
+                    myProfile.avatar_url,
+                    60 * 60
+                );
+
+        if (error) {
+            console.error(
+                "프로필 사진 URL 생성 실패:",
+                error
+            );
+        }
+
+        myAvatarUrl =
+            data?.signedUrl ??
+            null;
     }
 
     // ========================================
@@ -115,8 +188,11 @@ async function SettingsContent() {
 
     const ownedGroups =
         memberships?.filter(
-            (membership: any) =>
-                membership.groups?.owner_id ===
+            (
+                membership: any
+            ) =>
+                membership.groups
+                    ?.owner_id ===
                 user.id
         ) ?? [];
 

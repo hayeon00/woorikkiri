@@ -1,7 +1,15 @@
 "use client";
 
+import {
+    useEffect,
+} from "react";
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+
+import {
+    usePathname,
+    useRouter,
+} from "next/navigation";
 
 type BottomNavProps = {
     currentUserId: string;
@@ -12,6 +20,32 @@ export function BottomNav({
                           }: BottomNavProps) {
     const pathname =
         usePathname();
+
+    const router =
+        useRouter();
+
+    // ========================================
+    // 자주 사용하는 화면 미리 불러오기
+    // ========================================
+
+    useEffect(() => {
+        router.prefetch("/");
+
+        router.prefetch(
+            `/profile/${currentUserId}`
+        );
+
+        router.prefetch(
+            "/notifications"
+        );
+
+        router.prefetch(
+            "/settings"
+        );
+    }, [
+        router,
+        currentUserId,
+    ]);
 
     const isFeed =
         pathname === "/";
@@ -33,9 +67,13 @@ export function BottomNav({
     return (
         <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-1">
 
-            {/* 피드 */}
+            {/* ========================================
+                피드
+            ======================================== */}
+
             <Link
                 href="/"
+                prefetch={true}
                 aria-label="피드"
                 className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
                     isFeed
@@ -56,9 +94,13 @@ export function BottomNav({
                 </span>
             </Link>
 
-            {/* 내 피드 */}
+            {/* ========================================
+                내 피드
+            ======================================== */}
+
             <Link
                 href={`/profile/${currentUserId}`}
+                prefetch={true}
                 aria-label="내 피드"
                 className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
                     isMyFeed
@@ -79,9 +121,13 @@ export function BottomNav({
                 </span>
             </Link>
 
-            {/* 알림 */}
+            {/* ========================================
+                알림
+            ======================================== */}
+
             <Link
                 href="/notifications"
+                prefetch={true}
                 aria-label="알림"
                 className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
                     isNotifications
@@ -102,9 +148,13 @@ export function BottomNav({
                 </span>
             </Link>
 
-            {/* 내 정보 */}
+            {/* ========================================
+                내 정보
+            ======================================== */}
+
             <Link
                 href="/settings"
+                prefetch={true}
                 aria-label="내 정보"
                 className={`flex h-[60px] flex-1 flex-col items-center justify-center gap-1 ${
                     isSettings
@@ -127,6 +177,10 @@ export function BottomNav({
         </nav>
     );
 }
+
+// ========================================
+// 피드 아이콘
+// ========================================
 
 function HomeIcon() {
     return (
@@ -155,6 +209,10 @@ function HomeIcon() {
         </svg>
     );
 }
+
+// ========================================
+// 내 피드 아이콘
+// ========================================
 
 function GridIcon() {
     return (
@@ -208,6 +266,10 @@ function GridIcon() {
     );
 }
 
+// ========================================
+// 알림 아이콘
+// ========================================
+
 function BellIcon() {
     return (
         <svg
@@ -234,6 +296,10 @@ function BellIcon() {
         </svg>
     );
 }
+
+// ========================================
+// 내 정보 아이콘
+// ========================================
 
 function UserIcon() {
     return (
