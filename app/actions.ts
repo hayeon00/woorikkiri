@@ -6,6 +6,10 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToUsers } from "@/lib/push";
+import {
+    deletePushSubscriptionForEndpoint,
+    normalizePushEndpoint,
+} from "@/lib/push-subscription-cleanup";
 
 export async function createPost(formData: FormData) {
     const supabase = await createClient();
@@ -563,8 +567,42 @@ export async function toggleLike(
         "/notifications"
     );
 }
-export async function logout() {
+export async function logout(formData?: FormData) {
     const supabase = await createClient();
+
+    // ========================================
+    // 이 기기의 푸시 구독 해제
+    //
+    // 로그아웃 뒤에도 구독이 남으면 같은 기기를 쓰는
+    // 다음 사람에게 이전 사용자의 알림이 간다.
+    // 세션이 살아 있을 때(RLS 통과 가능) 먼저 지운다.
+    // 실패해도 로그아웃은 막지 않는다.
+    // ========================================
+
+    const pushEndpoint = normalizePushEndpoint(
+        formData?.get("push_endpoint")
+    );
+
+    if (pushEndpoint) {
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+            try {
+                await deletePushSubscriptionForEndpoint(
+                    supabase,
+                    user.id,
+                    pushEndpoint
+                );
+            } catch (pushError) {
+                console.error(
+                    "로그아웃 시 푸시 구독 삭제 실패:",
+                    pushError
+                );
+            }
+        }
+    }
 
     const { error } = await supabase.auth.signOut();
 

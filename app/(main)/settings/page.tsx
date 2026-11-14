@@ -9,9 +9,9 @@ import { AvatarEditor } from "@/components/avatar-editor";
 import { PushNotificationButton } from "@/components/push-notification-button";
 import { NotificationPreferences } from "@/components/notification-preferences";
 import { SortableGroupList } from "@/components/sortable-group-list";
+import { LogoutForm } from "@/components/logout-form";
 
 import {
-    logout,
     updateNickname,
     updateAvatar,
     createGroup,
@@ -786,26 +786,8 @@ async function SettingsContent() {
                         </h2>
                     </div>
 
-                    {/* 로그아웃 */}
-                    <form
-                        action={
-                            logout
-                        }
-                        className="border-t border-gray-100"
-                    >
-                        <button
-                            type="submit"
-                            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-bold transition hover:bg-gray-50"
-                        >
-                            <span>
-                                로그아웃
-                            </span>
-
-                            <span className="text-lg font-light text-gray-300">
-                                ›
-                            </span>
-                        </button>
-                    </form>
+                    {/* 로그아웃 (이 기기의 푸시 구독도 함께 해제) */}
+                    <LogoutForm />
 
                     {/* 계정 탈퇴 */}
                     <details className="group border-t border-gray-100">
