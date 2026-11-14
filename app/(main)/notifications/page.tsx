@@ -4,10 +4,21 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { markNotificationsAsRead } from "../../actions";
+import {
+    NOTIFICATION_PAGE,
+    nextListLimit,
+    parseListLimit,
+} from "@/lib/list-pagination";
+import { fetchNotificationPage } from "@/lib/feed-query";
 
-async function NotificationsContent() {
+async function NotificationsContent({
+    searchParams,
+}: {
+    searchParams: Promise<{ limit?: string }>;
+}) {
     const supabase =
         await createClient();
+    const params = await searchParams;
 
     const {
         data: { user },
@@ -18,42 +29,25 @@ async function NotificationsContent() {
     }
 
     // ========================================
-    // 알림 조회
+    // 알림 조회 (B1: limit 기반 "더 보기")
+    // 읽지 않은 개수는 목록과 별도로 센다.
     // ========================================
 
+    const notificationLimit = parseListLimit(
+        params.limit,
+        NOTIFICATION_PAGE
+    );
+
     const {
-        data: notifications,
+        notifications,
+        total: totalNotificationCount,
+        unreadCount,
         error: notificationsError,
-    } = await supabase
-        .from("notifications")
-        .select(`
-            id,
-            type,
-            post_id,
-            comment_id,
-            is_read,
-            created_at,
-            actor_id,
-
-            profiles!notifications_actor_id_fkey (
-                nickname,
-                avatar_url
-            ),
-
-            posts (
-                group_id
-            )
-        `)
-        .eq(
-            "user_id",
-            user.id
-        )
-        .order(
-            "created_at",
-            {
-                ascending: false,
-            }
-        );
+    } = await fetchNotificationPage(
+        supabase,
+        user.id,
+        notificationLimit
+    );
 
     if (notificationsError) {
         console.error(
@@ -62,15 +56,12 @@ async function NotificationsContent() {
         );
     }
 
-    // ========================================
-    // 읽지 않은 알림
-    // ========================================
-
-    const unreadCount =
-        notifications?.filter(
-            (notification: any) =>
-                !notification.is_read
-        ).length ?? 0;
+    const nextNotificationLimit = nextListLimit(
+        notificationLimit,
+        notifications.length,
+        totalNotificationCount,
+        NOTIFICATION_PAGE
+    );
 
     if (unreadCount > 0) {
         await markNotificationsAsRead();
@@ -331,6 +322,16 @@ async function NotificationsContent() {
                             )}
                         </section>
                     )}
+
+                {nextNotificationLimit !== null && (
+                    <Link
+                        href={`/notifications?limit=${nextNotificationLimit}`}
+                        scroll={false}
+                        className="mt-3 flex h-12 items-center justify-center rounded-[20px] bg-white text-[13px] font-black text-gray-600 shadow-[0_2px_16px_rgba(0,0,0,0.035)] transition hover:bg-gray-50"
+                    >
+                        이전 알림 더 보기
+                    </Link>
+                )}
             </div>
         </main>
     );
@@ -498,7 +499,11 @@ function formatNotificationDate(
     )}`;
 }
 
-export default function NotificationsPage() {
+export default function NotificationsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ limit?: string }>;
+}) {
     return (
         <Suspense
             fallback={
@@ -513,7 +518,9 @@ export default function NotificationsPage() {
                 </main>
             }
         >
-            <NotificationsContent />
+            <NotificationsContent
+                searchParams={searchParams}
+            />
         </Suspense>
     );
 }

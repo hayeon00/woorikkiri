@@ -3,12 +3,28 @@
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
   },
-  "include": ["*.ts", "../../lib/push-subscription-cleanup.ts"]
+  "include": [
+    "*.ts",
+    "../../lib/push-subscription-cleanup.ts",
+    "../../lib/list-pagination.ts",
+    "../../lib/feed-query.ts"
+  ]
 }

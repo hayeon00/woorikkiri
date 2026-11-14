@@ -15,6 +15,15 @@ import { PushOnboarding } from "@/components/push-onboarding";
 import {
     NotificationTarget,
 } from "@/components/notification-target";
+import {
+    FEED_PAGE,
+    nextListLimit,
+    parseListLimit,
+} from "@/lib/list-pagination";
+import {
+    fetchFeedPage,
+    limitIncludingPost,
+} from "@/lib/feed-query";
 
 import {
     toggleLike,
@@ -31,6 +40,7 @@ async function Feed({
         group?: string;
         post?: string;
         comment?: string;
+        limit?: string;
     }>;
 }) {
     const supabase = await createClient();
@@ -270,61 +280,43 @@ async function Feed({
         );
 
     // ========================================
-    // 게시글
+    // 게시글 (B1: limit 기반 "더 보기")
+    //
+    // 알림 딥링크(?post=)로 들어온 게시물이 첫 페이지 밖에 있으면
+    // 그 게시물까지 보이도록 limit을 늘린다.
     // ========================================
 
-    const {
-        data: posts,
-        error: postsError,
-    } = await supabase
-        .from("posts")
-        .select(`
-            id,
-            content,
-            image_path,
-            created_at,
-            user_id,
-            group_id,
-            post_images (
-                id,
-                image_path,
-                sort_order
-            ),
+    const requestedLimit = parseListLimit(
+        params.limit,
+        FEED_PAGE
+    );
 
-            profiles!posts_user_id_fkey (
-                nickname,
-                avatar_url
-            ),
-
-            likes (
-                user_id
-            ),
-
-            comments (
-                id,
-                content,
-                created_at,
-                user_id,
-                parent_id,
-                reply_to_user_id,
-            
-                profiles!comments_user_id_fkey (
-                    nickname,
-                    avatar_url
-                ),
-            
-                comment_mentions (
-                    user_id
-                )
-            )
-        `)
-        .eq(
-            "group_id",
-            currentGroup?.id ?? -1
+    const feedLimit = currentGroup
+        ? await limitIncludingPost(
+            supabase,
+            currentGroup.id,
+            Number(params.post),
+            requestedLimit,
+            FEED_PAGE
         )
-        .order("created_at", {
-            ascending: false,
-        });
+        : requestedLimit;
+
+    const {
+        posts,
+        total: totalPostCount,
+        error: postsError,
+    } = await fetchFeedPage(
+        supabase,
+        currentGroup?.id ?? -1,
+        feedLimit
+    );
+
+    const nextFeedLimit = nextListLimit(
+        feedLimit,
+        posts.length,
+        totalPostCount,
+        FEED_PAGE
+    );
 
     if (postsError) {
         console.error(
@@ -1018,6 +1010,7 @@ async function Feed({
 
                                     <span className="text-[11px] font-medium text-gray-400">
                                         {
+                                            totalPostCount ??
                                             postsWithImages.length
                                         }
                                         개
@@ -1270,6 +1263,26 @@ async function Feed({
                                             </article>
                                         )
                                     )}
+
+                                    {/* 더 보기 (B1) */}
+                                    {nextFeedLimit !== null && (
+                                        <Link
+                                            href={`/?group=${currentGroup.id}&limit=${nextFeedLimit}`}
+                                            scroll={false}
+                                            className="flex h-12 items-center justify-center rounded-[18px] border border-black/[0.04] bg-white text-[13px] font-black text-gray-600 transition hover:bg-gray-50 active:scale-[0.99]"
+                                        >
+                                            이전 이야기 더 보기
+                                        </Link>
+                                    )}
+
+                                    {nextFeedLimit === null &&
+                                        totalPostCount !== null &&
+                                        postsWithImages.length <
+                                        totalPostCount && (
+                                            <p className="px-1 py-4 text-center text-[11px] text-gray-400">
+                                                피드에서는 최근 {postsWithImages.length}개까지 볼 수 있어요.
+                                            </p>
+                                        )}
                                 </section>
                             </div>
                         </>
@@ -1624,6 +1637,7 @@ export default function Home({
         group?: string;
         post?: string;
         comment?: string;
+        limit?: string;
     }>;
 }) {
     return (
