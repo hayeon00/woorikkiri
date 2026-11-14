@@ -1605,7 +1605,7 @@ export async function joinGroup(
         );
     }
 
-    const { error } = await supabase.rpc(
+    const { data: joinedGroupId, error } = await supabase.rpc(
         "join_group_by_invite_code",
         {
             code: inviteCode,
@@ -1614,6 +1614,11 @@ export async function joinGroup(
 
     if (error) {
         throw new Error(error.message);
+    }
+
+    // 없는 코드·만료된 코드는 NULL (S4)
+    if (!joinedGroupId) {
+        throw new Error(INVALID_INVITE_MESSAGE);
     }
 
     revalidatePath("/");
@@ -2020,7 +2025,7 @@ export async function joinGroupFromLink(
 
     if (!groupId) {
         throw new Error(
-            "그룹을 찾을 수 없습니다."
+            INVALID_INVITE_MESSAGE
         );
     }
 
@@ -2029,6 +2034,54 @@ export async function joinGroupFromLink(
 
     return groupId;
 }
+const INVALID_INVITE_MESSAGE =
+    "초대코드가 올바르지 않거나 만료되었어요. 방장에게 새 초대 링크를 받아주세요.";
+
+// ========================================
+// 초대코드 재발급 (S4, 방장 전용)
+//
+// 이전 코드는 즉시 무효가 되고 새 코드는 7일 동안 유효하다.
+// 방장 확인은 DB 함수(regenerate_invite_code)에서 한다.
+// ========================================
+
+export async function regenerateInviteCode(
+    formData: FormData
+) {
+    const supabase = await createClient();
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error("로그인이 필요합니다.");
+    }
+
+    const groupId = Number(
+        formData.get("group_id")
+    );
+
+    if (
+        !Number.isInteger(groupId) ||
+        groupId <= 0
+    ) {
+        throw new Error("잘못된 그룹입니다.");
+    }
+
+    const { error } = await supabase.rpc(
+        "regenerate_invite_code",
+        {
+            p_group_id: groupId,
+        }
+    );
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    revalidatePath("/settings");
+}
+
 export async function markNotificationsAsRead() {
     const supabase = await createClient();
 

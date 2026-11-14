@@ -21,7 +21,28 @@ import {
     deleteGroup,
     deleteAccount,
     updateGroupOrder,
+    regenerateInviteCode,
 } from "../../actions";
+
+// ========================================
+// 초대코드 만료 표시 (S4)
+// ========================================
+
+function isInviteExpired(expiresAt: string | null | undefined) {
+    if (!expiresAt) return false;
+    return Date.parse(expiresAt) <= Date.now();
+}
+
+function formatInviteExpiry(expiresAt: string | null | undefined) {
+    if (!expiresAt) return "";
+    return new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(new Date(expiresAt));
+}
 
 async function SettingsContent() {
     const supabase = await createClient();
@@ -78,6 +99,7 @@ async function SettingsContent() {
                     id,
                     name,
                     invite_code,
+                    invite_code_expires_at,
                     owner_id,
                     created_at
                 )
@@ -490,16 +512,53 @@ async function SettingsContent() {
                                                                     group.invite_code
                                                                 }
                                                             </p>
+
+                                                            <p
+                                                                className={
+                                                                    isInviteExpired(group.invite_code_expires_at)
+                                                                        ? "mt-1 text-[10px] font-bold text-red-500"
+                                                                        : "mt-1 text-[10px] text-gray-400"
+                                                                }
+                                                            >
+                                                                {isInviteExpired(group.invite_code_expires_at)
+                                                                    ? isOwner
+                                                                        ? "만료됨 · 새 코드를 만들어 공유해주세요"
+                                                                        : "만료됨 · 방장에게 새 코드를 요청해주세요"
+                                                                    : `${formatInviteExpiry(group.invite_code_expires_at)}까지 사용 가능`}
+                                                            </p>
                                                         </div>
 
-                                                        <div className="shrink-0">
-                                                            <InviteLinkButton
-                                                                inviteCode={
-                                                                    group.invite_code
-                                                                }
-                                                            />
-                                                        </div>
+                                                        {!isInviteExpired(group.invite_code_expires_at) && (
+                                                            <div className="shrink-0">
+                                                                <InviteLinkButton
+                                                                    inviteCode={
+                                                                        group.invite_code
+                                                                    }
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
+
+                                                    {/* 초대코드 재발급 (방장, S4) */}
+                                                    {isOwner && (
+                                                        <form
+                                                            action={regenerateInviteCode}
+                                                            className="mt-3"
+                                                        >
+                                                            <input
+                                                                type="hidden"
+                                                                name="group_id"
+                                                                value={group.id}
+                                                            />
+
+                                                            <button
+                                                                type="submit"
+                                                                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[11px] font-bold text-gray-600 transition hover:bg-gray-50"
+                                                            >
+                                                                새 초대코드 만들기 (이전 코드는 바로 사용할 수 없어요)
+                                                            </button>
+                                                        </form>
+                                                    )}
 
                                                     {isOwner ? (
                                                         <div className="mt-5 border-t border-gray-200 pt-4">
