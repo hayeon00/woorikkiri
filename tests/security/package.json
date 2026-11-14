@@ -6,12 +6,15 @@
     "db:start": "supabase start --workdir ../..",
     "db:reset": "supabase db reset --local --workdir ../..",
     "db:stop": "supabase stop --workdir ../..",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@supabase/supabase-js": "2.117.2",
+    "@types/node": "20.19.25",
     "@types/ws": "8.18.1",
     "supabase": "2.122.0",
+    "typescript": "5.9.3",
     "vitest": "3.2.4",
     "ws": "8.18.3"
   }
