@@ -179,6 +179,11 @@ export function LoginForm({
                 <br />
                 우리만의 작은 공간
             </p>
+
+            <nav className="mt-4 flex justify-center gap-4 text-[11px] font-bold text-gray-400">
+                <Link href="/terms">이용약관</Link>
+                <Link href="/privacy">개인정보처리방침</Link>
+            </nav>
         </div>
     );
 }

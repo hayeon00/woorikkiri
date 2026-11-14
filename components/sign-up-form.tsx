@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 export function SignUpForm({
                                className,
@@ -13,6 +14,11 @@ export function SignUpForm({
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [repeatPassword, setRepeatPassword] = useState("");
+    // 필수 동의 (이용약관, 개인정보 수집·이용, 만 14세 이상)
+    const [agreeTerms, setAgreeTerms] = useState(false);
+    const [agreePrivacy, setAgreePrivacy] = useState(false);
+    const [agreeAge, setAgreeAge] = useState(false);
+    const allAgreed = agreeTerms && agreePrivacy && agreeAge;
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -42,6 +48,12 @@ export function SignUpForm({
             return;
         }
 
+        if (!allAgreed) {
+            setError("필수 항목에 모두 동의해주세요.");
+            setIsLoading(false);
+            return;
+        }
+
         try {
             const callbackUrl =
                 `${window.location.origin}` +
@@ -52,6 +64,12 @@ export function SignUpForm({
                 password,
                 options: {
                     emailRedirectTo: callbackUrl,
+                    // 동의 기록 (개인정보처리방침 1항)
+                    data: {
+                        terms_version: LEGAL_VERSION,
+                        terms_agreed_at: new Date().toISOString(),
+                        age_over_14: true,
+                    },
                 },
             });
 
@@ -176,6 +194,61 @@ export function SignUpForm({
                         />
                     </div>
 
+                    {/* 필수 동의 */}
+                    <fieldset className="rounded-2xl border border-gray-200 px-4 py-3">
+                        <legend className="sr-only">필수 동의</legend>
+
+                        <label className="flex items-center gap-3 border-b border-gray-100 pb-3 text-sm font-black text-gray-900">
+                            <input
+                                type="checkbox"
+                                checked={allAgreed}
+                                onChange={(e) => {
+                                    setAgreeTerms(e.target.checked);
+                                    setAgreePrivacy(e.target.checked);
+                                    setAgreeAge(e.target.checked);
+                                }}
+                                className="h-5 w-5 accent-black"
+                            />
+                            모두 동의합니다
+                        </label>
+
+                        <label className="mt-3 flex items-center gap-3 text-[13px] text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={agreeTerms}
+                                onChange={(e) => setAgreeTerms(e.target.checked)}
+                                className="h-4 w-4 accent-black"
+                            />
+                            <span className="flex-1">(필수) 이용약관 동의</span>
+                            <Link href="/terms" target="_blank" className="text-[12px] font-bold text-gray-400 underline">
+                                보기
+                            </Link>
+                        </label>
+
+                        <label className="mt-2 flex items-center gap-3 text-[13px] text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={agreePrivacy}
+                                onChange={(e) => setAgreePrivacy(e.target.checked)}
+                                className="h-4 w-4 accent-black"
+                            />
+                            <span className="flex-1">(필수) 개인정보 수집·이용 및 국외 이전 동의</span>
+                            <Link href="/privacy" target="_blank" className="text-[12px] font-bold text-gray-400 underline">
+                                보기
+                            </Link>
+                        </label>
+
+                        <label className="mt-2 flex items-center gap-3 text-[13px] text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={agreeAge}
+                                onChange={(e) => setAgreeAge(e.target.checked)}
+                                className="h-4 w-4 accent-black"
+                            />
+                            <span className="flex-1">(필수) 만 14세 이상입니다</span>
+                        </label>
+                    </fieldset>
+
                     {error && (
                         <div className="rounded-2xl bg-red-50 px-4 py-3">
                             <p className="text-sm font-medium text-red-500">
@@ -186,7 +259,7 @@ export function SignUpForm({
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || !allAgreed}
                         className="mt-1 flex h-14 w-full items-center justify-center rounded-2xl bg-[#171717] text-sm font-bold text-white shadow-sm transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isLoading ? "계정 만드는 중..." : "회원가입"}

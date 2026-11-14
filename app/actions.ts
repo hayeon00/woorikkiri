@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { purgeUserContent } from "@/lib/account-deletion";
 import { sendPushToUsers } from "@/lib/push";
 import {
     deletePushSubscriptionForEndpoint,
@@ -2174,57 +2175,38 @@ export async function deleteAccount(
     }
 
     // ========================================
-    // 현재 프로필 사진 경로 확인
-    // ========================================
-
-    const {
-        data: profile,
-        error: profileError,
-    } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-
-    if (profileError) {
-        throw new Error(
-            profileError.message
-        );
-    }
-
-    const avatarPath =
-        profile?.avatar_url ?? null;
-
-    // ========================================
-    // 프로필 사진 삭제
+    // 내 콘텐츠 정리 (개인정보처리방침 "탈퇴 시 처리")
     //
-    // 게시글 사진은 삭제하지 않는다.
-    // 게시글 자체를 기록으로 남기기 때문.
-    // ========================================
-
-    if (avatarPath) {
-        const {
-            error: avatarDeleteError,
-        } = await supabase.storage
-            .from("avatars")
-            .remove([avatarPath]);
-
-        if (avatarDeleteError) {
-            throw new Error(
-                `프로필 사진 삭제에 실패했습니다: ${avatarDeleteError.message}`
-            );
-        }
-    }
-
-    // ========================================
-    // Auth 사용자 삭제
+    // - 게시물·프로필 사진 파일 삭제
+    // - 내 게시물 삭제 (댓글·좋아요·알림 CASCADE)
+    // - 남의 게시물에 쓴 댓글은 내용만 대체
     //
-    // 반드시 서버 전용 Secret key를 사용하는
-    // Admin Client로 실행한다.
+    // 이미 나간 공간의 게시물은 RLS로 지울 수 없으므로
+    // 서버 전용 Admin Client로 실행한다.
     // ========================================
 
     const admin =
         createAdminClient();
+
+    try {
+        await purgeUserContent(
+            admin,
+            user.id
+        );
+    } catch (purgeError) {
+        console.error(
+            "탈퇴 콘텐츠 정리 실패:",
+            purgeError
+        );
+
+        throw new Error(
+            "게시물과 사진을 정리하지 못해 탈퇴를 멈췄어요. 잠시 후 다시 시도해주세요."
+        );
+    }
+
+    // ========================================
+    // Auth 사용자 삭제
+    // ========================================
 
     const {
         error: deleteUserError,
@@ -2242,8 +2224,8 @@ export async function deleteAccount(
     //      ↓ CASCADE
     // profiles 삭제
     //
-    // posts.user_id    → NULL
-    // comments.user_id → NULL
+    // 게시물은 위에서 이미 삭제했고,
+    // 내용이 대체된 댓글의 user_id → NULL ('탈퇴한 사용자')
     //
     // 좋아요 / 그룹 membership /
     // 관련 알림 등은 FK 정책에 따라 정리된다.

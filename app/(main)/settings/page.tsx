@@ -11,7 +11,8 @@ import { NotificationPreferences } from "@/components/notification-preferences";
 import { SortableGroupList } from "@/components/sortable-group-list";
 import { LogoutForm } from "@/components/logout-form";
 
-import { updateAvatar, updateGroupOrder } from "../../actions";
+import { updateGroupOrder } from "../../actions";
+import { updateAvatarSafe } from "../../safe-actions";
 import { ActionForm } from "@/components/action-form";
 import {
     updateNicknameForm,
@@ -313,7 +314,7 @@ async function SettingsContent() {
 
                             {/* 프로필 사진 */}
                             <AvatarEditor
-                                updateAction={updateAvatar}
+                                updateAction={updateAvatarSafe}
                             />
 
                             {/* 닉네임 */}
@@ -850,16 +851,7 @@ async function SettingsContent() {
 
                         <div className="border-t border-red-50 bg-red-50/60 p-4">
                             <p className="text-xs leading-5 text-gray-500">
-                                계정을 탈퇴하면
-                                다시 로그인할 수
-                                없습니다. 이전에
-                                작성한 게시물과
-                                댓글은 공간의
-                                기록으로 남으며,
-                                작성자는
-                                &quot;탈퇴한
-                                사용자&quot;로
-                                표시됩니다.
+                                계정을 탈퇴하면 다시 로그인할 수 없고, 내가 올린 게시물과 사진, 프로필 사진이 바로 삭제되며 되돌릴 수 없어요. 다른 사람 게시물에 남긴 댓글은 내용이 &quot;탈퇴한 사용자의 댓글입니다.&quot;로 바뀌어요.
                             </p>
 
                             {hasOwnedGroups ? (
@@ -923,6 +915,10 @@ async function SettingsContent() {
                     WOORIKKIRI
                 </p>
             </div>
+            <nav className="flex justify-center gap-4 pb-10 pt-2 text-[11px] font-bold text-gray-400">
+                <Link href="/terms">이용약관</Link>
+                <Link href="/privacy">개인정보처리방침</Link>
+            </nav>
         </main>
     );
 }

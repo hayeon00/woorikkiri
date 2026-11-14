@@ -26,6 +26,7 @@
     "../../lib/push-subscription-cleanup.ts",
     "../../lib/list-pagination.ts",
     "../../lib/feed-query.ts",
-    "../../lib/form-state.ts"
+    "../../lib/form-state.ts",
+    "../../lib/account-deletion.ts"
   ]
 }

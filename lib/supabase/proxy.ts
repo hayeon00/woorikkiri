@@ -40,9 +40,14 @@ export async function updateSession(request: NextRequest) {
     const user = data?.claims;
 
     // 로그인하지 않아도 접근할 수 있는 경로
+    const pathname = request.nextUrl.pathname;
+
+    // 약관·개인정보처리방침은 가입 전에도 볼 수 있어야 한다.
     const isPublicRoute =
-        request.nextUrl.pathname.startsWith("/auth") ||
-        request.nextUrl.pathname.startsWith("/join/");
+        pathname.startsWith("/auth") ||
+        pathname.startsWith("/join/") ||
+        pathname === "/terms" ||
+        pathname === "/privacy";
 
     if (!user && !isPublicRoute) {
         const url = request.nextUrl.clone();
