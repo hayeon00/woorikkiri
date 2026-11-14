@@ -1,5 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /**
  * 루트 레이아웃 자체가 실패했을 때의 마지막 안전망.
  * 레이아웃·전역 CSS 없이 그려지므로 스타일을 직접 넣는다.
@@ -11,6 +14,10 @@ export default function GlobalError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    useEffect(() => {
+        Sentry.captureException(error);
+    }, [error]);
+
     return (
         <html lang="ko">
             <body

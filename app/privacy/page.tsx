@@ -56,8 +56,12 @@ export default function PrivacyPage() {
                         </tr>
                         <tr>
                             <td>자동 수집</td>
-                            <td>접속 IP 주소, 접속 일시, 요청 주소, 브라우저 정보, 로그인 세션 쿠키</td>
-                            <td>로그인 유지, 서비스 운영과 오류 확인</td>
+                            <td>
+                                접속 IP 주소, 접속 일시, 요청 주소, 브라우저 정보, 로그인 세션
+                                쿠키, 오류 발생 기록(오류 내용, 발생한 화면 주소, 브라우저·기기
+                                종류)
+                            </td>
+                            <td>로그인 유지, 서비스 운영과 오류 확인·수정</td>
                         </tr>
                     </tbody>
                 </table>
@@ -131,6 +135,17 @@ export default function PrivacyPage() {
                             <td>Vercel Inc. (미국)</td>
                             <td>웹 서비스 호스팅, 요청 처리 (접속 정보, 요청 내용)</td>
                             <td>미국 등 해외 서버. 서비스 이용 시 네트워크로 전송</td>
+                        </tr>
+                        <tr>
+                            <td>Functional Software, Inc. (Sentry, 미국)</td>
+                            <td>
+                                오류 수집과 분석 (오류 내용, 발생한 화면 주소,
+                                브라우저·기기 종류. IP 주소·이메일·게시물 내용은 보내지
+                                않음)
+                            </td>
+                            <td>
+                                독일(EU) 리전에 저장. 오류가 발생할 때 네트워크로 전송
+                            </td>
                         </tr>
                         <tr>
                             <td>

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { unstable_rethrow } from "next/navigation";
 
 /**
@@ -57,6 +58,7 @@ export async function runFormAction(
 
         if (!(error instanceof Error && HANGUL.test(error.message))) {
             console.error("폼 처리 중 예상하지 못한 오류:", error);
+            Sentry.captureException(error);
         }
 
         return {

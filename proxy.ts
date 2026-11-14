@@ -16,8 +16,9 @@ export const config = {
          * - favicon.ico
          * - manifest.webmanifest
          * - sw.js
+         * - monitoring (Sentry 오류 전송 터널, 로그인 전 화면 오류도 받아야 함)
          * - 이미지 파일
          */
-        "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
     ],
 };
