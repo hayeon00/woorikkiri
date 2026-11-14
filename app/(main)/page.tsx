@@ -356,6 +356,52 @@ async function Feed({
     // 게시글 / 프로필 사진 Signed URL
     // ========================================
 
+    // 게시물 이미지 경로를 중복 없이 수집
+    const allImagePaths = [
+        ...new Set(
+            (posts ?? []).flatMap((post: any) =>
+                (post.post_images ?? []).map(
+                    (image: any) => image.image_path as string
+                )
+            )
+        ),
+    ];
+
+// 여러 이미지의 Signed URL을 한 번에 생성
+    const signedImageResult =
+        allImagePaths.length > 0
+            ? await supabase.storage
+                .from("post-images")
+                .createSignedUrls(
+                    allImagePaths,
+                    60 * 60
+                )
+            : null;
+
+    if (signedImageResult?.error) {
+        console.error(
+            "게시물 이미지 URL 일괄 생성 실패:",
+            signedImageResult.error
+        );
+    }
+
+// 이미지 경로별 Signed URL 저장
+    const signedImageMap = new Map<
+        string,
+        string
+    >();
+
+    signedImageResult?.data?.forEach(
+        (item, index) => {
+            if (item.signedUrl) {
+                signedImageMap.set(
+                    allImagePaths[index],
+                    item.signedUrl
+                );
+            }
+        }
+    );
+
     const postsWithImages =
         await Promise.all(
             (posts ?? []).map(
@@ -367,55 +413,31 @@ async function Feed({
                             a.sort_order - b.sort_order
                     );
 
-                    const imageUrls = (
-                        await Promise.all(
-                            sortedPostImages.map(
-                                async (postImage: any) => {
-                                    const { data, error } =
-                                        await supabase.storage
-                                            .from(
-                                                "post-images"
-                                            )
-                                            .createSignedUrl(
-                                                postImage.image_path,
-                                                60 * 60
-                                            );
+                    const imageUrls = sortedPostImages
+                        .map((postImage: any) => {
+                            const imageUrl = signedImageMap.get(
+                                postImage.image_path
+                            );
 
-                                    if (error) {
-                                        console.error(
-                                            "게시글 사진 URL 생성 실패:",
-                                            error
-                                        );
+                            if (!imageUrl) {
+                                return null;
+                            }
 
-                                        return null;
-                                    }
-
-                                    if (!data?.signedUrl) {
-                                        return null;
-                                    }
-
-                                    return {
-                                        id: postImage.id,
-                                        image_path:
-                                        postImage.image_path,
-                                        sort_order:
-                                        postImage.sort_order,
-                                        image_url:
-                                        data.signedUrl,
-                                    };
-                                }
-                            )
-                        )
-                    ).filter(
-                        (
-                            image
-                        ): image is {
-                            id: number;
-                            image_path: string;
-                            sort_order: number;
-                            image_url: string;
-                        } => image !== null
-                    );
+                            return {
+                                id: postImage.id,
+                                image_path: postImage.image_path,
+                                sort_order: postImage.sort_order,
+                                image_url: imageUrl,
+                            };
+                        })
+                        .filter(
+                            (image): image is {
+                                id: number;
+                                image_path: string;
+                                sort_order: number;
+                                image_url: string;
+                            } => image !== null
+                        );
 
                     const authorAvatarUrl =
                         await getAvatarSignedUrl(
