@@ -25,6 +25,7 @@
     "*.ts",
     "../../lib/push-subscription-cleanup.ts",
     "../../lib/list-pagination.ts",
-    "../../lib/feed-query.ts"
+    "../../lib/feed-query.ts",
+    "../../lib/form-state.ts"
   ]
 }

@@ -1,8 +1,7 @@
 import { Suspense } from "react";
-import { redirect } from "next/navigation";
-
 import { createClient } from "@/lib/supabase/server";
-import { joinGroupFromLink } from "../../actions";
+import { ActionForm } from "@/components/action-form";
+import { joinGroupFromLinkForm } from "../../form-actions";
 
 export default function JoinPage({
                                      params,
@@ -97,15 +96,8 @@ async function JoinContent({
                         </>
                     ) : (
                         <>
-                            <form
-                                action={async (formData: FormData) => {
-                                    "use server";
-
-                                    const groupId =
-                                        await joinGroupFromLink(formData);
-
-                                    redirect(`/?group=${groupId}`);
-                                }}
+                            <ActionForm
+                                action={joinGroupFromLinkForm}
                                 className="mt-6"
                             >
                                 <input
@@ -120,7 +112,7 @@ async function JoinContent({
                                 >
                                     이 공간에 참여하기
                                 </button>
-                            </form>
+                            </ActionForm>
 
                             <a
                                 href="/"

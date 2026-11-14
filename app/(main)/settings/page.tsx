@@ -11,18 +11,18 @@ import { NotificationPreferences } from "@/components/notification-preferences";
 import { SortableGroupList } from "@/components/sortable-group-list";
 import { LogoutForm } from "@/components/logout-form";
 
+import { updateAvatar, updateGroupOrder } from "../../actions";
+import { ActionForm } from "@/components/action-form";
 import {
-    updateNickname,
-    updateAvatar,
-    createGroup,
-    joinGroup,
-    leaveGroup,
-    updateGroupName,
-    deleteGroup,
-    deleteAccount,
-    updateGroupOrder,
-    regenerateInviteCode,
-} from "../../actions";
+    updateNicknameForm,
+    regenerateInviteCodeForm,
+    updateGroupNameForm,
+    deleteGroupForm,
+    leaveGroupForm,
+    createGroupForm,
+    joinGroupForm,
+    deleteAccountForm,
+} from "../../form-actions";
 
 // ========================================
 // 초대코드 만료 표시 (S4)
@@ -317,10 +317,8 @@ async function SettingsContent() {
                             />
 
                             {/* 닉네임 */}
-                            <form
-                                action={
-                                    updateNickname
-                                }
+                            <ActionForm
+                                action={updateNicknameForm}
                                 className="mt-5 border-t border-gray-200/70 pt-4"
                             >
                                 <label className="text-[11px] font-bold text-gray-500">
@@ -346,7 +344,7 @@ async function SettingsContent() {
                                 >
                                     닉네임 저장
                                 </button>
-                            </form>
+                            </ActionForm>
                         </div>
                     </details>
                 </section>
@@ -541,8 +539,8 @@ async function SettingsContent() {
 
                                                     {/* 초대코드 재발급 (방장, S4) */}
                                                     {isOwner && (
-                                                        <form
-                                                            action={regenerateInviteCode}
+                                                        <ActionForm
+                                                            action={regenerateInviteCodeForm}
                                                             className="mt-3"
                                                         >
                                                             <input
@@ -557,17 +555,15 @@ async function SettingsContent() {
                                                             >
                                                                 새 초대코드 만들기 (이전 코드는 바로 사용할 수 없어요)
                                                             </button>
-                                                        </form>
+                                                        </ActionForm>
                                                     )}
 
                                                     {isOwner ? (
                                                         <div className="mt-5 border-t border-gray-200 pt-4">
 
                                                             {/* 공간 이름 변경 */}
-                                                            <form
-                                                                action={
-                                                                    updateGroupName
-                                                                }
+                                                            <ActionForm
+                                                                action={updateGroupNameForm}
                                                             >
                                                                 <input
                                                                     type="hidden"
@@ -602,7 +598,7 @@ async function SettingsContent() {
                                                                         변경
                                                                     </button>
                                                                 </div>
-                                                            </form>
+                                                            </ActionForm>
 
                                                             {/* 공간 삭제 */}
                                                             <details className="mt-4 border-t border-gray-200 pt-4">
@@ -610,10 +606,8 @@ async function SettingsContent() {
                                                                     공간 삭제
                                                                 </summary>
 
-                                                                <form
-                                                                    action={
-                                                                        deleteGroup
-                                                                    }
+                                                                <ActionForm
+                                                                    action={deleteGroupForm}
                                                                     className="mt-3"
                                                                 >
                                                                     <input
@@ -652,14 +646,12 @@ async function SettingsContent() {
                                                                     >
                                                                         이 공간 영구 삭제
                                                                     </button>
-                                                                </form>
+                                                                </ActionForm>
                                                             </details>
                                                         </div>
                                                     ) : (
-                                                        <form
-                                                            action={
-                                                                leaveGroup
-                                                            }
+                                                        <ActionForm
+                                                            action={leaveGroupForm}
                                                             className="mt-5 border-t border-gray-200 pt-4"
                                                         >
                                                             <input
@@ -681,7 +673,7 @@ async function SettingsContent() {
                                                                 나가도 이전에 작성한
                                                                 게시물과 댓글은 남습니다.
                                                             </p>
-                                                        </form>
+                                                        </ActionForm>
                                                     )}
                                                 </div>
                                             </details>
@@ -720,10 +712,8 @@ async function SettingsContent() {
                             </span>
                         </summary>
 
-                        <form
-                            action={
-                                createGroup
-                            }
+                        <ActionForm
+                            action={createGroupForm}
                             className="border-t border-gray-100 bg-gray-50/70 p-4"
                         >
                             <input
@@ -743,7 +733,7 @@ async function SettingsContent() {
                             >
                                 공간 만들기
                             </button>
-                        </form>
+                        </ActionForm>
                     </details>
 
                     {/* 초대코드 참여 */}
@@ -759,10 +749,8 @@ async function SettingsContent() {
                             </span>
                         </summary>
 
-                        <form
-                            action={
-                                joinGroup
-                            }
+                        <ActionForm
+                            action={joinGroupForm}
                             className="border-t border-gray-100 bg-gray-50/70 p-4"
                         >
                             <p className="mb-2 text-[11px] leading-5 text-gray-400">
@@ -788,7 +776,7 @@ async function SettingsContent() {
                             >
                                 공간 참여
                             </button>
-                        </form>
+                        </ActionForm>
                     </details>
                 </section>
 
@@ -898,10 +886,8 @@ async function SettingsContent() {
                                     </p>
                                 </div>
                             ) : (
-                                <form
-                                    action={
-                                        deleteAccount
-                                    }
+                                <ActionForm
+                                    action={deleteAccountForm}
                                     className="mt-3"
                                 >
                                     <label className="text-[11px] font-bold text-red-500">
@@ -927,7 +913,7 @@ async function SettingsContent() {
                                         계정 영구
                                         탈퇴
                                     </button>
-                                </form>
+                                </ActionForm>
                             )}
                         </div>
                     </details>
