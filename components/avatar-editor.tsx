@@ -1,5 +1,6 @@
 "use client";
 
+import { throwIfFailed, type FormState } from "@/lib/form-state";
 import {
     PointerEvent as ReactPointerEvent,
     useEffect,
@@ -10,7 +11,7 @@ import {
 type AvatarEditorProps = {
     updateAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 const OUTPUT_SIZE = 800;
@@ -407,8 +408,10 @@ export function AvatarEditor({
                 croppedFile
             );
 
-            await updateAction(
-                formData
+            throwIfFailed(
+                await updateAction(
+                    formData
+                )
             );
 
             handleCancel();

@@ -30,8 +30,8 @@ import {
     createComment,
     deletePost,
     deleteComment,
-    updatePost,
 } from "../actions";
+import { updatePostSafe } from "../safe-actions";
 
 async function Feed({
                         searchParams,
@@ -514,14 +514,6 @@ async function Feed({
                     name: string;
                 } => group !== null
             ) ?? [];
-
-    async function updatePostAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        await updatePost(formData);
-    }
 
     async function deletePostAction(
         formData: FormData
@@ -1110,7 +1102,7 @@ async function Feed({
                                                                 post.content ?? ""
                                                             }
                                                             updateAction={
-                                                                updatePostAction
+                                                                updatePostSafe
                                                             }
                                                             deleteAction={
                                                                 deletePostAction

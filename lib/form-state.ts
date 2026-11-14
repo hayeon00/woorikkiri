@@ -66,3 +66,10 @@ export async function runFormAction(
         };
     }
 }
+
+/** 클라이언트에서 실패 결과를 Error로 바꿔 기존 catch 흐름을 그대로 쓴다. */
+export function throwIfFailed(state: FormState): void {
+    if (state.status === "error") {
+        throw new Error(state.message ?? GENERIC_ERROR_MESSAGE);
+    }
+}

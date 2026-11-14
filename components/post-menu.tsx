@@ -5,13 +5,14 @@ import {
     useRef,
     useState,
 } from "react";
+import type { FormState } from "@/lib/form-state";
 
 type PostMenuProps = {
     postId: number;
     currentContent: string;
     updateAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
     deleteAction: (
         formData: FormData
     ) => void | Promise<void>;
@@ -28,6 +29,10 @@ export function PostMenu({
 
     const [isEditOpen, setIsEditOpen] =
         useState(false);
+
+    // 수정 실패 안내 (운영 빌드에서도 서버 문구를 보여주기 위해 결과값으로 받음)
+    const [editError, setEditError] =
+        useState<string | null>(null);
 
     const [
         isConfirmOpen,
@@ -131,6 +136,7 @@ export function PostMenu({
 
     function closeEdit() {
         setEditContent(currentContent);
+        setEditError(null);
         setIsEditOpen(false);
     }
 
@@ -219,7 +225,12 @@ export function PostMenu({
                     >
                         <form
                             action={async (formData) => {
-                                await updateAction(formData);
+                                setEditError(null);
+                                const result = await updateAction(formData);
+                                if (result.status === "error") {
+                                    setEditError(result.message);
+                                    return;
+                                }
                                 setIsEditOpen(false);
                             }}
                         >
@@ -285,6 +296,15 @@ export function PostMenu({
                                     </span>
                                 </div>
                             </div>
+
+                            {editError && (
+                                <p
+                                    role="alert"
+                                    className="px-5 pb-3 text-[11px] font-bold text-red-500 sm:px-6"
+                                >
+                                    {editError}
+                                </p>
+                            )}
 
                             <div className="grid grid-cols-2 gap-2 border-t border-gray-100 p-3">
                                 <button

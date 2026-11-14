@@ -7,7 +7,12 @@ import {
 } from "react";
 
 import { createClient } from "@/lib/supabase/client";
-import { createPost } from "@/app/actions";
+import { createPostSafe } from "@/app/safe-actions";
+import { throwIfFailed } from "@/lib/form-state";
+import {
+    IMAGE_TYPE_ERROR,
+    isAllowedImageType,
+} from "@/lib/upload-rules";
 
 type CreatePostFormProps = {
     groupId: number;
@@ -345,12 +350,12 @@ export function CreatePostForm({
 
         for (const image of images) {
             if (
-                !image.type.startsWith(
-                    "image/"
+                !isAllowedImageType(
+                    image.type
                 )
             ) {
                 setErrorMessage(
-                    "이미지 파일만 업로드할 수 있습니다."
+                    IMAGE_TYPE_ERROR
                 );
                 return;
             }
@@ -492,8 +497,11 @@ export function CreatePostForm({
                 }
             );
 
-            await createPost(
-                formData
+            // 운영 빌드에서도 서버 안내 문구를 받도록 결과값으로 받는다
+            throwIfFailed(
+                await createPostSafe(
+                    formData
+                )
             );
 
             setContent("");
@@ -1005,8 +1013,8 @@ export function CreatePostForm({
                             const invalidFile =
                                 selectedFiles.find(
                                     (file) =>
-                                        !file.type.startsWith(
-                                            "image/"
+                                        !isAllowedImageType(
+                                            file.type
                                         )
                                 );
 
@@ -1014,7 +1022,7 @@ export function CreatePostForm({
                                 invalidFile
                             ) {
                                 setErrorMessage(
-                                    "이미지 파일만 선택해주세요."
+                                    IMAGE_TYPE_ERROR
                                 );
 
                                 event.target.value =
