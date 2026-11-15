@@ -357,7 +357,7 @@ async function SettingsContent() {
 
                     <div className="flex items-center justify-between px-5 pb-2 pt-5 sm:px-6">
                         <div>
-                            <p className="text-[10px] font-bold tracking-[0.12em] text-gray-400">
+                            <p className="text-[12px] font-bold tracking-[0.12em] text-gray-400">
                                 MY SPACES
                             </p>
 
@@ -383,7 +383,7 @@ async function SettingsContent() {
                                         공간 순서를 바꿔보세요
                                     </p>
 
-                                    <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                                    <p className="mt-0.5 text-[12px] leading-4 text-gray-400">
                                         맨 위 공간이 로그인 후 첫 화면으로 열려요.
                                     </p>
                                 </div>
@@ -474,8 +474,8 @@ async function SettingsContent() {
                                                             <span
                                                                 className={
                                                                     isOwner
-                                                                        ? "shrink-0 rounded-full bg-black px-2 py-0.5 text-[9px] font-bold text-white"
-                                                                        : "shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[9px] font-bold text-gray-400"
+                                                                        ? "shrink-0 rounded-full bg-black px-2 py-0.5 text-[11px] font-bold text-white"
+                                                                        : "shrink-0 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-bold text-gray-400"
                                                                 }
                                                             >
                                                 {isOwner
@@ -484,14 +484,14 @@ async function SettingsContent() {
                                             </span>
                                                         </div>
 
-                                                        <p className="mt-1 text-[10px] text-gray-400">
+                                                        <p className="mt-1 text-[12px] text-gray-400">
                                                             자세히 보기
                                                         </p>
                                                     </div>
 
                                                     <Link
                                                         href={`/?group=${group.id}`}
-                                                        className="shrink-0 rounded-full bg-gray-100 px-3.5 py-2 text-[10px] font-black text-gray-700 transition hover:bg-gray-200"
+                                                        className="shrink-0 rounded-full bg-gray-100 px-3.5 py-2 text-[12px] font-black text-gray-700 transition hover:bg-gray-200"
                                                     >
                                                         이동
                                                     </Link>
@@ -502,7 +502,7 @@ async function SettingsContent() {
                                                     {/* 초대 코드 */}
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div className="min-w-0">
-                                                            <p className="text-[10px] font-bold text-gray-400">
+                                                            <p className="text-[12px] font-bold text-gray-400">
                                                                 초대코드
                                                             </p>
 
@@ -515,8 +515,8 @@ async function SettingsContent() {
                                                             <p
                                                                 className={
                                                                     isInviteExpired(group.invite_code_expires_at)
-                                                                        ? "mt-1 text-[10px] font-bold text-red-500"
-                                                                        : "mt-1 text-[10px] text-gray-400"
+                                                                        ? "mt-1 text-[12px] font-bold text-red-500"
+                                                                        : "mt-1 text-[12px] text-gray-400"
                                                                 }
                                                             >
                                                                 {isInviteExpired(group.invite_code_expires_at)
@@ -533,6 +533,7 @@ async function SettingsContent() {
                                                                     inviteCode={
                                                                         group.invite_code
                                                                     }
+                                                                    groupName={group.name}
                                                                 />
                                                             </div>
                                                         )}
@@ -619,7 +620,7 @@ async function SettingsContent() {
                                                                         }
                                                                     />
 
-                                                                    <p className="text-[10px] leading-5 text-gray-400">
+                                                                    <p className="text-[12px] leading-5 text-gray-400">
                                                                         삭제하려면{" "}
                                                                         <strong className="text-gray-600">
                                                                             {
@@ -670,7 +671,7 @@ async function SettingsContent() {
                                                                 이 공간에서 나가기
                                                             </button>
 
-                                                            <p className="mt-2 text-center text-[10px] leading-4 text-gray-400">
+                                                            <p className="mt-2 text-center text-[12px] leading-4 text-gray-400">
                                                                 나가도 이전에 작성한
                                                                 게시물과 댓글은 남습니다.
                                                             </p>
@@ -692,7 +693,7 @@ async function SettingsContent() {
                 <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
 
                     <div className="px-5 pb-3 pt-5 sm:px-6">
-                        <p className="text-[10px] font-bold tracking-[0.12em] text-gray-400">
+                        <p className="text-[12px] font-bold tracking-[0.12em] text-gray-400">
                             NEW SPACE
                         </p>
 
@@ -782,7 +783,7 @@ async function SettingsContent() {
                 </section>
 
                 <section className="rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-6">
-                    <p className="text-[10px] font-bold tracking-wider text-gray-400">
+                    <p className="text-[12px] font-bold tracking-wider text-gray-400">
                         NOTIFICATIONS
                     </p>
 
@@ -825,7 +826,7 @@ async function SettingsContent() {
                 <section className="overflow-hidden rounded-[26px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.035)]">
 
                     <div className="px-5 pb-3 pt-5">
-                        <p className="text-[10px] font-bold tracking-[0.12em] text-gray-400">
+                        <p className="text-[12px] font-bold tracking-[0.12em] text-gray-400">
                             ACCOUNT
                         </p>
 
@@ -911,7 +912,7 @@ async function SettingsContent() {
                     </details>
                 </section>
 
-                <p className="pb-2 pt-1 text-center text-[10px] font-medium tracking-[0.16em] text-gray-300">
+                <p className="pb-2 pt-1 text-center text-[12px] font-medium tracking-[0.16em] text-gray-300">
                     WOORIKKIRI
                 </p>
             </div>

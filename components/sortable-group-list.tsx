@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import {
     Children,
     ReactNode,
@@ -133,8 +134,8 @@ export function SortableGroupList({
                     previousItems
                 );
 
-                alert(
-                    "공간 순서를 저장하지 못했어요."
+                toast.error(
+                    "공간 순서를 저장하지 못했어요. 다시 시도해주세요."
                 );
             }
         });
@@ -142,6 +143,8 @@ export function SortableGroupList({
 
     return (
         <DndContext
+            // 서버·브라우저에서 같은 id를 쓰도록 고정 (hydration 불일치 방지)
+            id="group-order"
             sensors={sensors}
             collisionDetection={
                 closestCenter

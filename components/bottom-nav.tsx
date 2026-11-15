@@ -86,8 +86,8 @@ export function BottomNav({
                 <span
                     className={
                         isFeed
-                            ? "text-[9px] font-black"
-                            : "text-[9px] font-bold"
+                            ? "text-[11px] font-black"
+                            : "text-[11px] font-bold"
                     }
                 >
                     피드
@@ -113,8 +113,8 @@ export function BottomNav({
                 <span
                     className={
                         isMyFeed
-                            ? "text-[9px] font-black"
-                            : "text-[9px] font-bold"
+                            ? "text-[11px] font-black"
+                            : "text-[11px] font-bold"
                     }
                 >
                     내 피드
@@ -140,8 +140,8 @@ export function BottomNav({
                 <span
                     className={
                         isNotifications
-                            ? "text-[9px] font-black"
-                            : "text-[9px] font-bold"
+                            ? "text-[11px] font-black"
+                            : "text-[11px] font-bold"
                     }
                 >
                     알림
@@ -167,8 +167,8 @@ export function BottomNav({
                 <span
                     className={
                         isSettings
-                            ? "text-[9px] font-black"
-                            : "text-[9px] font-bold"
+                            ? "text-[11px] font-black"
+                            : "text-[11px] font-bold"
                     }
                 >
                     내 정보

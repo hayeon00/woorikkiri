@@ -275,7 +275,7 @@ export function ProfilePostGallery({
                     <GridIcon />
                     사진
 
-                    <span className="text-[9px] text-gray-400">
+                    <span className="text-[11px] text-gray-400">
                         {
                             photoPosts.length
                         }
@@ -304,7 +304,7 @@ export function ProfilePostGallery({
                     <TextIcon />
                     글
 
-                    <span className="text-[9px] text-gray-400">
+                    <span className="text-[11px] text-gray-400">
                         {
                             textPosts.length
                         }
@@ -372,7 +372,7 @@ export function ProfilePostGallery({
                                                     )}
 
                                                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent px-2 pb-2 pt-8 opacity-0 transition group-hover:opacity-100 sm:opacity-100">
-                                                    <p className="truncate text-[9px] font-bold text-white">
+                                                    <p className="truncate text-[11px] font-bold text-white">
                                                         {getGroupName(
                                                             post.group_id
                                                         )}
@@ -414,7 +414,7 @@ export function ProfilePostGallery({
                                         className="block w-full rounded-[20px] border border-black/[0.04] bg-white p-4 text-left shadow-[0_5px_20px_rgba(0,0,0,0.025)] transition active:scale-[0.99] sm:p-5"
                                     >
                                         <div className="flex items-center justify-between gap-3">
-                                        <span className="min-w-0 truncate rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-black text-gray-500">
+                                        <span className="min-w-0 truncate rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-black text-gray-500">
                                             {getGroupName(
                                                 post.group_id
                                             )}
@@ -424,7 +424,7 @@ export function ProfilePostGallery({
                                                 dateTime={
                                                     post.created_at
                                                 }
-                                                className="shrink-0 text-[9px] font-medium text-gray-400"
+                                                className="shrink-0 text-[11px] font-medium text-gray-400"
                                             >
                                                 {formatPostDate(
                                                     post.created_at
@@ -437,7 +437,7 @@ export function ProfilePostGallery({
                                                 "내용 없는 게시물"}
                                         </p>
 
-                                        <div className="mt-4 flex items-center gap-3 text-[10px] font-bold text-gray-400">
+                                        <div className="mt-4 flex items-center gap-3 text-[12px] font-bold text-gray-400">
                                         <span>
                                             댓글{" "}
                                             {

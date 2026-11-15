@@ -459,7 +459,7 @@ export function CommentForm({
 
             {replyTarget && (
                 <div className="mb-2 ml-9 flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2">
-                    <p className="min-w-0 truncate text-[10px] text-gray-500">
+                    <p className="min-w-0 truncate text-[12px] text-gray-500">
                         <strong className="font-black text-blue-500">
                             @{replyTarget.nickname}
                         </strong>
@@ -475,7 +475,7 @@ export function CommentForm({
                         onClick={
                             handleCancelReply
                         }
-                        className="ml-3 shrink-0 text-[10px] font-bold text-gray-400 transition hover:text-gray-700"
+                        className="ml-3 shrink-0 text-[12px] font-bold text-gray-400 transition hover:text-gray-700"
                     >
                         취소
                     </button>

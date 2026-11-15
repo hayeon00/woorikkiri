@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import {
     useState,
     useTransition,
@@ -82,8 +83,8 @@ export function GroupOrderEditor({
                         error
                     );
 
-                    alert(
-                        "공간 순서를 저장하지 못했어요."
+                    toast.error(
+                        "공간 순서를 저장하지 못했어요. 다시 시도해주세요."
                     );
                 }
             }
@@ -113,14 +114,14 @@ export function GroupOrderEditor({
                             공간 순서 변경
                         </p>
 
-                        <p className="mt-1 text-[10px] leading-4 text-gray-400">
+                        <p className="mt-1 text-[12px] leading-4 text-gray-400">
                             가장 위 공간이
                             로그인 후 기본으로
                             열려요.
                         </p>
                     </div>
 
-                    <span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black text-gray-400">
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-gray-400">
                         맨 위 = 기본
                     </span>
                 </div>

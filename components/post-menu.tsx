@@ -283,12 +283,12 @@ export function PostMenu({
                                 />
 
                                 <div className="mt-2 flex items-center justify-between">
-                                    <p className="text-[10px] text-gray-400">
+                                    <p className="text-[12px] text-gray-400">
                                         사진은 그대로
                                         유지돼요.
                                     </p>
 
-                                    <span className="text-[10px] font-medium text-gray-400">
+                                    <span className="text-[12px] font-medium text-gray-400">
                                         {
                                             editContent.length
                                         }{" "}

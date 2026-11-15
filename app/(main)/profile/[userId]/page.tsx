@@ -1021,7 +1021,7 @@ async function ProfileContent({
                                 }
                             </p>
 
-                            <p className="mt-0.5 text-[10px] font-bold text-gray-400">
+                            <p className="mt-0.5 text-[12px] font-bold text-gray-400">
                                 게시물
                             </p>
                         </div>
@@ -1035,7 +1035,7 @@ async function ProfileContent({
                                 }
                             </p>
 
-                            <p className="mt-0.5 text-[10px] font-bold text-gray-400">
+                            <p className="mt-0.5 text-[12px] font-bold text-gray-400">
                                 {isMe
                                     ? "내 공간"
                                     : "함께한 공간"}
@@ -1064,7 +1064,7 @@ async function ProfileContent({
                     <div className="px-4 pb-3 pt-2 sm:px-5">
                         <div className="flex items-end justify-between gap-4">
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400">
+                                <p className="text-[12px] font-bold text-gray-400">
                                     PROFILE FEED
                                 </p>
 
@@ -1078,7 +1078,7 @@ async function ProfileContent({
                                 </h2>
                             </div>
 
-                            <span className="text-[10px] font-bold text-gray-400">
+                            <span className="text-[12px] font-bold text-gray-400">
                                 {
                                     postsWithImages.length
                                 }

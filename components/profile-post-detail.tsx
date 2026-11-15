@@ -182,7 +182,7 @@ export function ProfilePostDetail({
                             dateTime={
                                 post.created_at
                             }
-                            className="mt-0.5 block text-[9px] font-medium text-gray-400"
+                            className="mt-0.5 block text-[11px] font-medium text-gray-400"
                         >
                             {formatPostDate(
                                 post.created_at
@@ -294,7 +294,7 @@ export function ProfilePostDetail({
                                         댓글
                                     </h3>
 
-                                    <span className="text-[10px] font-bold text-gray-400">
+                                    <span className="text-[12px] font-bold text-gray-400">
                                         {
                                             post
                                                 .comments
@@ -306,7 +306,7 @@ export function ProfilePostDetail({
                                 {post.comments
                                         .length >
                                     0 && (
-                                        <span className="truncate text-[9px] font-medium text-gray-400">
+                                        <span className="truncate text-[11px] font-medium text-gray-400">
                                         답글과 멘션을 사용할 수 있어요
                                     </span>
                                     )}

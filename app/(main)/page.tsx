@@ -12,6 +12,8 @@ import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { PushOnboarding } from "@/components/push-onboarding";
+import { InviteLinkButton } from "@/components/invite-link-button";
+import { formatFullDateTime, formatRelativeTime } from "@/lib/time";
 import {
     NotificationTarget,
 } from "@/components/notification-target";
@@ -128,6 +130,7 @@ async function Feed({
                 id,
                 name,
                 invite_code,
+                invite_code_expires_at,
                 owner_id,
                 created_at
             )
@@ -227,6 +230,12 @@ async function Feed({
     const currentGroup: any =
         currentMembership?.groups ?? null;
 
+    // 초대코드가 아직 유효할 때만 초대 버튼을 보여준다 (S4: 7일 만료)
+    const inviteActive =
+        Boolean(currentGroup?.invite_code) &&
+        Boolean(currentGroup?.invite_code_expires_at) &&
+        Date.parse(currentGroup.invite_code_expires_at) > Date.now();
+
     // ========================================
     // 현재 그룹 멤버
     // ========================================
@@ -324,20 +333,30 @@ async function Feed({
             postsError
         );
 
+        // 기술 오류 문구는 Sentry·서버 로그로만 남기고, 화면에는 할 일을 안내한다.
         return (
-            <main className="mx-auto min-h-screen w-full max-w-[720px] bg-white p-6">
-                <h1 className="text-2xl font-black">
-                    우리끼리
-                </h1>
-
-                <div className="mt-8 rounded-3xl bg-red-50 p-5">
-                    <p className="font-bold">
-                        게시글을 불러오지 못했어요.
+            <main className="flex min-h-svh items-center justify-center bg-[#f6f6f4] px-6 pb-28">
+                <div className="w-full max-w-[360px] rounded-[28px] bg-white p-7 text-center shadow-[0_12px_40px_rgba(0,0,0,0.05)]">
+                    <p className="text-[18px] font-black tracking-[-0.03em]">
+                        피드를 불러오지 못했어요
                     </p>
 
-                    <p className="mt-2 break-words text-sm text-red-500">
-                        {postsError.message}
+                    <p className="mt-2 text-[14px] leading-6 text-gray-500">
+                        인터넷 연결을 확인한 뒤
+                        <br />
+                        다시 시도해주세요.
                     </p>
+
+                    <Link
+                        href={
+                            currentGroup
+                                ? `/?group=${currentGroup.id}`
+                                : "/"
+                        }
+                        className="mt-6 flex h-12 items-center justify-center rounded-full bg-gray-950 text-[14px] font-black text-white transition active:scale-95"
+                    >
+                        다시 시도
+                    </Link>
                 </div>
             </main>
         );
@@ -649,7 +668,7 @@ async function Feed({
                             memberships.length >
                             0 && (
                                 <div className="mt-9">
-                                    <p className="px-4 text-[10px] font-black tracking-[0.08em] text-gray-400">
+                                    <p className="px-4 text-[12px] font-black tracking-[0.08em] text-gray-400">
                                         내 공간
                                     </p>
 
@@ -727,7 +746,7 @@ async function Feed({
                                             "친구"}
                                     </p>
 
-                                    <p className="mt-0.5 text-[9px] text-gray-400">
+                                    <p className="mt-0.5 text-[11px] text-gray-400">
                                         내 정보 보기
                                     </p>
                                 </div>
@@ -957,7 +976,7 @@ async function Feed({
                                                 명
                                             </p>
 
-                                            <p className="mt-0.5 text-[10px] text-gray-400">
+                                            <p className="mt-0.5 truncate text-[12px] text-gray-400">
                                                 우리끼리
                                                 편하게
                                                 이야기해요
@@ -965,16 +984,54 @@ async function Feed({
                                         </div>
                                     </div>
 
-                                    <Link
-                                        href="/settings"
-                                        className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-gray-100 px-3 text-[11px] font-bold text-gray-600 transition hover:bg-gray-200"
-                                    >
-                                        공간 관리
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        {inviteActive && (
+                                            <InviteLinkButton
+                                                inviteCode={currentGroup.invite_code}
+                                                groupName={currentGroup.name}
+                                                variant="chip"
+                                            />
+                                        )}
 
-                                        <ChevronRightIcon />
-                                    </Link>
+                                        <Link
+                                            href="/settings"
+                                            aria-label="공간 관리"
+                                            title="공간 관리"
+                                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition hover:bg-gray-200"
+                                        >
+                                            <SettingsIcon />
+                                        </Link>
+                                    </div>
                                 </div>
                             </section>
+
+                            {/* 혼자일 때: 친구 초대 안내 */}
+                            {groupMembersWithAvatars.length <= 1 && (
+                                <section className="mx-3 mt-3 rounded-[22px] bg-gray-950 p-5 text-white sm:mx-5 xl:mx-6 xl:mt-6">
+                                    <p className="text-[16px] font-black tracking-[-0.02em]">
+                                        아직 혼자 있는 공간이에요
+                                    </p>
+                                    <p className="mt-1.5 text-[13px] leading-5 text-white/70">
+                                        친구를 초대하면 서로의 이야기를 볼 수 있어요.
+                                    </p>
+                                    <div className="mt-4">
+                                        {inviteActive ? (
+                                            <InviteLinkButton
+                                                inviteCode={currentGroup.invite_code}
+                                                groupName={currentGroup.name}
+                                                variant="block"
+                                            />
+                                        ) : (
+                                            <Link
+                                                href="/settings"
+                                                className="flex h-11 items-center justify-center rounded-[14px] bg-white text-[13px] font-black text-gray-950"
+                                            >
+                                                초대코드 새로 만들기
+                                            </Link>
+                                        )}
+                                    </div>
+                                </section>
+                            )}
 
                             <div className="space-y-3 px-3 pt-3 sm:px-5 sm:pt-5 xl:px-6 xl:pt-6">
 
@@ -1075,21 +1132,13 @@ async function Feed({
                                                                 </p>
                                                             )}
 
-                                                            <time className="mt-0.5 block text-[10px] font-medium text-gray-400">
-                                                                {new Date(
+                                                            <time
+                                                                dateTime={post.created_at}
+                                                                title={formatFullDateTime(post.created_at)}
+                                                                className="mt-0.5 block text-[12px] font-medium text-gray-400"
+                                                            >
+                                                                {formatRelativeTime(
                                                                     post.created_at
-                                                                ).toLocaleString(
-                                                                    "ko-KR",
-                                                                    {
-                                                                        month:
-                                                                            "long",
-                                                                        day:
-                                                                            "numeric",
-                                                                        hour:
-                                                                            "2-digit",
-                                                                        minute:
-                                                                            "2-digit",
-                                                                    }
                                                                 )}
                                                             </time>
                                                         </div>
@@ -1292,7 +1341,7 @@ async function Feed({
                         {currentGroup && (
                             <div className="rounded-[26px] border border-black/[0.04] bg-white p-6 shadow-[0_10px_35px_rgba(0,0,0,0.035)]">
 
-                                <p className="text-[10px] font-black tracking-[0.08em] text-gray-400">
+                                <p className="text-[12px] font-black tracking-[0.08em] text-gray-400">
                                     우리 공간
                                 </p>
 
@@ -1348,7 +1397,7 @@ async function Feed({
                                     명
                                 </p>
 
-                                <p className="mt-1 text-[10px] leading-5 text-gray-400">
+                                <p className="mt-1 text-[12px] leading-5 text-gray-400">
                                     우리끼리 편하게
                                     이야기하는
                                     <br />
@@ -1364,7 +1413,7 @@ async function Feed({
                             </div>
                         )}
 
-                        <div className="mt-4 px-2 text-[9px] leading-5 text-gray-300">
+                        <div className="mt-4 px-2 text-[11px] leading-5 text-gray-300">
                             우리끼리 · 친구들과 나누는
                             작은 공간
                         </div>
@@ -1598,26 +1647,6 @@ function CommentIcon() {
 }
 
 
-function ChevronRightIcon() {
-    return (
-        <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-        >
-            <path
-                d="m9 18 6-6-6-6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            />
-        </svg>
-    );
-}
-
 // ========================================
 // PAGE
 // ========================================
@@ -1656,5 +1685,25 @@ export default function Home({
                 }
             />
         </Suspense>
+    );
+}
+function SettingsIcon() {
+    return (
+        <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="M4 7h10M18 7h2M4 17h4M12 17h8"
+                stroke="currentColor"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+            />
+            <circle cx="16" cy="7" r="2" stroke="currentColor" strokeWidth="1.9" />
+            <circle cx="10" cy="17" r="2" stroke="currentColor" strokeWidth="1.9" />
+        </svg>
     );
 }

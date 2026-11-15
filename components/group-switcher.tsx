@@ -97,7 +97,7 @@ export function GroupSwitcher({
             {isOpen &&
                 groups.length > 1 && (
                     <div className="absolute left-0 top-[calc(100%+12px)] z-50 w-[260px] overflow-hidden rounded-[20px] border border-black/[0.06] bg-white p-2 shadow-[0_18px_60px_rgba(0,0,0,0.14)]">
-                        <p className="px-3 pb-2 pt-1 text-[10px] font-bold text-gray-400">
+                        <p className="px-3 pb-2 pt-1 text-[12px] font-bold text-gray-400">
                             내 공간
                         </p>
 

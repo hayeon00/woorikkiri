@@ -156,7 +156,7 @@ async function NotificationsContent({
 
             <div className="px-3 pt-4 sm:px-6 sm:pt-6">
                 <section className="mb-4 rounded-[26px] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.035)] sm:p-6">
-                    <p className="text-[10px] font-bold tracking-wider text-gray-400">
+                    <p className="text-[12px] font-bold tracking-wider text-gray-400">
                         NOTIFICATIONS
                     </p>
 

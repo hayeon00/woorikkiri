@@ -343,7 +343,7 @@ export function PushNotificationButton() {
                             기기 알림이 차단되어 있어요
                         </p>
 
-                        <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                        <p className="mt-0.5 text-[12px] leading-4 text-gray-400">
                             기기 설정에서 우리끼리의 알림 권한을 허용해주세요.
                         </p>
                     </div>
@@ -372,14 +372,14 @@ export function PushNotificationButton() {
                             이 기기에서 알림을 받고 있어요
                         </p>
 
-                        <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                        <p className="mt-0.5 text-[12px] leading-4 text-gray-400">
                             아래에서 받을 알림 종류를 선택할 수 있어요.
                         </p>
                     </div>
                 </div>
 
                 {message && (
-                    <p className="mt-2 text-center text-[10px] font-medium text-gray-400">
+                    <p className="mt-2 text-center text-[12px] font-medium text-gray-400">
                         {
                             message
                         }
@@ -426,7 +426,7 @@ export function PushNotificationButton() {
             </button>
 
             {message && (
-                <p className="mt-2 text-center text-[10px] font-medium text-red-400">
+                <p className="mt-2 text-center text-[12px] font-medium text-red-400">
                     {
                         message
                     }
