@@ -478,13 +478,14 @@ export function CreatePostForm({
         const trimmedContent =
             content.trim();
 
-        if (
-            !trimmedContent &&
-            images.length === 0
-        ) {
+        // 글은 항상 필요 (사진만 올리기 불가)
+        if (!trimmedContent) {
             setErrorMessage(
-                "글이나 사진을 추가해주세요."
+                images.length > 0
+                    ? "사진과 함께 올릴 글을 써주세요."
+                    : "글을 입력해주세요."
             );
+            textareaRef.current?.focus();
             return;
         }
 
@@ -869,7 +870,11 @@ export function CreatePostForm({
                                     event.currentTarget.form?.requestSubmit();
                                 }
                             }}
-                            placeholder="우리에게 무슨 일이 있었나요?"
+                            placeholder={
+                                images.length > 0
+                                    ? "사진에 대한 이야기를 함께 써주세요"
+                                    : "우리에게 무슨 일이 있었나요?"
+                            }
                             maxLength={
                                 MAX_CONTENT
                             }
@@ -879,6 +884,13 @@ export function CreatePostForm({
                             }
                             className="max-h-[220px] min-h-[92px] w-full resize-none bg-transparent text-[16px] leading-6 text-gray-900 outline-none placeholder:text-gray-300 disabled:opacity-60"
                         />
+
+                        {images.length > 0 &&
+                            !content.trim() && (
+                                <p className="mt-1 text-[12px] font-medium text-gray-400">
+                                    사진만으로는 올릴 수 없어요. 글을 함께 써주세요.
+                                </p>
+                            )}
 
                         {content.length >
                             400 && (
@@ -1201,9 +1213,7 @@ export function CreatePostForm({
                     type="submit"
                     disabled={
                         isBusy ||
-                        (!content.trim() &&
-                            images.length ===
-                            0)
+                        !content.trim()
                     }
                     className="flex h-11 min-w-[92px] items-center justify-center rounded-full bg-gray-950 px-5 text-[14px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                 >
