@@ -4,6 +4,7 @@ import type {
 } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { Toaster } from "@/components/toaster";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -87,13 +88,16 @@ export default function RootLayout({
         <body
             className={`${geistSans.className} antialiased`}
         >
+        {/* 다크 모드 디자인이 아직 없어 라이트로 고정한다.
+            시스템 다크 모드에서 배경·기본 글자색만 바뀌는 문제 방지 */}
         <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            forcedTheme="light"
+            enableSystem={false}
             disableTransitionOnChange
         >
             {children}
+            <Toaster />
         </ThemeProvider>
         </body>
         </html>

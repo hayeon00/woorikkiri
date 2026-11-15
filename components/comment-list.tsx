@@ -399,11 +399,11 @@ function OptimisticCommentItem({
                     </div>
 
                     <div className="mt-0.5 flex items-center gap-2">
-                        <span className="text-[9px] font-medium text-gray-400">
+                        <span className="text-[11px] font-medium text-gray-400">
                             방금
                         </span>
 
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-gray-400">
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-gray-400">
                             <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-gray-300 border-t-gray-600" />
 
                             전송 중...
@@ -505,7 +505,7 @@ function CommentItem({
 
                     <div className="mt-0.5 flex items-center gap-2.5">
                         <time
-                            className="text-[9px] font-medium text-gray-400"
+                            className="text-[11px] font-medium text-gray-400"
                             dateTime={
                                 comment.created_at
                             }
@@ -523,7 +523,7 @@ function CommentItem({
                                         comment
                                     )
                                 }
-                                className="text-[9px] font-bold text-gray-400 transition hover:text-gray-700"
+                                className="text-[11px] font-bold text-gray-400 transition hover:text-gray-700"
                             >
                                 답글
                             </button>

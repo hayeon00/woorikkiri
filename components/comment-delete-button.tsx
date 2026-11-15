@@ -23,7 +23,7 @@ export function CommentDeleteButton({
                 onClick={() =>
                     setIsConfirming(true)
                 }
-                className="mt-1 text-[9px] font-medium text-gray-300 transition hover:text-red-400"
+                className="mt-1 text-[11px] font-medium text-gray-300 transition hover:text-red-400"
             >
                 삭제
             </button>
@@ -32,7 +32,7 @@ export function CommentDeleteButton({
 
     return (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="mr-1 text-[9px] font-medium text-gray-400">
+            <span className="mr-1 text-[11px] font-medium text-gray-400">
                 이 댓글을 삭제할까요?
             </span>
 
@@ -41,7 +41,7 @@ export function CommentDeleteButton({
                 onClick={() =>
                     setIsConfirming(false)
                 }
-                className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-bold text-gray-500 transition hover:bg-gray-200 active:scale-95"
+                className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-500 transition hover:bg-gray-200 active:scale-95"
             >
                 취소
             </button>
@@ -58,7 +58,7 @@ export function CommentDeleteButton({
 
                 <button
                     type="submit"
-                    className="rounded-full bg-red-50 px-2.5 py-1 text-[9px] font-black text-red-500 transition hover:bg-red-100 active:scale-95"
+                    className="rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-black text-red-500 transition hover:bg-red-100 active:scale-95"
                 >
                     삭제
                 </button>

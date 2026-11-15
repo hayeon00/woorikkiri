@@ -1,6 +1,9 @@
 "use client";
 
 import { throwIfFailed, type FormState } from "@/lib/form-state";
+import { detectImageType } from "@/lib/image-prepare";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { toast } from "@/lib/toast";
 import {
     PointerEvent as ReactPointerEvent,
     useEffect,
@@ -76,22 +79,23 @@ export function AvatarEditor({
         }
 
         if (
-            !file.type.startsWith(
+            !detectImageType(file).startsWith(
                 "image/"
             )
         ) {
-            alert(
-                "이미지 파일을 선택해주세요."
+            toast.error(
+                "사진 파일을 선택해주세요."
             );
             return;
         }
 
+        // 잘라낸 사진을 작은 JPEG로 다시 저장하므로 원본은 넉넉히 허용한다.
         if (
             file.size >
-            5 * 1024 * 1024
+            20 * 1024 * 1024
         ) {
-            alert(
-                "프로필 사진은 5MB 이하만 가능합니다."
+            toast.error(
+                "사진 용량이 너무 커요. 다른 사진을 선택해주세요."
             );
             return;
         }
@@ -421,10 +425,11 @@ export function AvatarEditor({
                 error
             );
 
-            alert(
-                error instanceof Error
-                    ? error.message
-                    : "프로필 사진을 저장하지 못했습니다."
+            toast.error(
+                friendlyErrorMessage(
+                    error,
+                    "프로필 사진을 저장하지 못했어요."
+                )
             );
         } finally {
             setIsSaving(false);
@@ -502,7 +507,7 @@ export function AvatarEditor({
                             </div>
                         </div>
 
-                        <p className="mt-3 text-center text-[10px] font-medium text-gray-400">
+                        <p className="mt-3 text-center text-[12px] font-medium text-gray-400">
                             사진을 드래그해서
                             위치를 조정하세요.
                         </p>
@@ -547,7 +552,7 @@ export function AvatarEditor({
                                 onClick={
                                     handleReset
                                 }
-                                className="rounded-full px-3 py-1.5 text-[10px] font-bold text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                                className="rounded-full px-3 py-1.5 text-[12px] font-bold text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
                             >
                                 위치 초기화
                             </button>

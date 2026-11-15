@@ -283,12 +283,19 @@ export function PostMenu({
                                 />
 
                                 <div className="mt-2 flex items-center justify-between">
-                                    <p className="text-[10px] text-gray-400">
-                                        사진은 그대로
-                                        유지돼요.
+                                    <p
+                                        className={
+                                            editContent.trim()
+                                                ? "text-[12px] text-gray-400"
+                                                : "text-[12px] font-bold text-red-500"
+                                        }
+                                    >
+                                        {editContent.trim()
+                                            ? "사진은 그대로 유지돼요."
+                                            : "글을 입력해주세요."}
                                     </p>
 
-                                    <span className="text-[10px] font-medium text-gray-400">
+                                    <span className="text-[12px] font-medium text-gray-400">
                                         {
                                             editContent.length
                                         }{" "}
@@ -319,7 +326,8 @@ export function PostMenu({
 
                                 <button
                                     type="submit"
-                                    className="flex h-11 items-center justify-center rounded-[14px] bg-black text-[13px] font-black text-white transition hover:bg-gray-800 active:scale-[0.98]"
+                                    disabled={!editContent.trim()}
+                                    className="flex h-11 items-center justify-center rounded-[14px] bg-black text-[13px] font-black text-white transition hover:bg-gray-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                                 >
                                     저장
                                 </button>

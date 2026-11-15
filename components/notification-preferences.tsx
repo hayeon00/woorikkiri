@@ -160,7 +160,7 @@ export function NotificationPreferences({
             </div>
 
             {(message || isPending) && (
-                <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-center text-[10px] font-medium text-gray-400">
+                <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5 text-center text-[12px] font-medium text-gray-400">
                     {isPending
                         ? "저장 중..."
                         : message}
@@ -190,13 +190,15 @@ function SettingRow({
                     {title}
                 </p>
 
-                <p className="mt-0.5 text-[10px] leading-4 text-gray-400">
+                <p className="mt-0.5 text-[12px] leading-4 text-gray-400">
                     {description}
                 </p>
             </div>
 
             <input
                 type="checkbox"
+                role="switch"
+                aria-checked={checked}
                 checked={checked}
                 disabled={disabled}
                 onChange={(event) =>
@@ -207,8 +209,13 @@ function SettingRow({
                 className="peer sr-only"
             />
 
-            <span className="relative h-7 w-12 shrink-0 rounded-full bg-gray-200 transition peer-checked:bg-black peer-disabled:cursor-not-allowed">
-                <span className="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+            {/* peer-checked:는 형제 요소에만 적용되므로, 손잡이 이동은 트랙의
+                [&>span] 선택자로 건다. (예전에는 켜져도 손잡이가 왼쪽에 남았다) */}
+            <span
+                aria-hidden="true"
+                className="relative h-7 w-12 shrink-0 rounded-full bg-gray-200 transition peer-checked:bg-black peer-focus-visible:ring-2 peer-focus-visible:ring-black/30 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:[&>span]:translate-x-5"
+            >
+                <span className="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform" />
             </span>
         </label>
     );

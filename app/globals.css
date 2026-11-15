@@ -59,12 +59,41 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
   * {
     @apply border-border;
   }
+  html,
   body {
-    @apply bg-background text-foreground;
+    background-color: #f6f6f4;
   }
+  body {
+    @apply text-foreground;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@keyframes toast-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.toast-enter {
+    animation: toast-enter 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast-enter {
+        animation: none;
+    }
 }
 
 @keyframes notification-target-pulse {

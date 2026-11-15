@@ -30,6 +30,8 @@
     "../../lib/list-pagination.ts",
     "../../lib/feed-query.ts",
     "../../lib/form-state.ts",
-    "../../lib/account-deletion.ts"
+    "../../lib/account-deletion.ts",
+    "../../lib/time.ts",
+    "../../lib/friendly-error.ts"
   ]
 }

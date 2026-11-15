@@ -9,10 +9,37 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { createPostSafe } from "@/app/safe-actions";
 import { throwIfFailed } from "@/lib/form-state";
-import {
-    IMAGE_TYPE_ERROR,
-    isAllowedImageType,
-} from "@/lib/upload-rules";
+import { IMAGE_TYPE_ERROR } from "@/lib/upload-rules";
+import { prepareImageForUpload } from "@/lib/image-prepare";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { toast } from "@/lib/toast";
+
+const MAX_IMAGES = 5;
+const MAX_CONTENT = 500;
+
+function draftKey(groupId: number) {
+    return `woorikkiri:post-draft:${groupId}`;
+}
+
+function readDraft(groupId: number) {
+    try {
+        return window.localStorage.getItem(draftKey(groupId)) ?? "";
+    } catch {
+        return "";
+    }
+}
+
+function writeDraft(groupId: number, value: string) {
+    try {
+        if (value.trim()) {
+            window.localStorage.setItem(draftKey(groupId), value);
+        } else {
+            window.localStorage.removeItem(draftKey(groupId));
+        }
+    } catch {
+        // 저장할 수 없는 환경(사생활 보호 모드 등)에서는 무시
+    }
+}
 
 type CreatePostFormProps = {
     groupId: number;
@@ -48,6 +75,14 @@ export function CreatePostForm({
     const [errorMessage, setErrorMessage] =
         useState("");
 
+    // 선택한 사진을 줄이는 중
+    const [isPreparing, setIsPreparing] =
+        useState(false);
+
+    // 업로드 진행 (올린 장수 / 전체)
+    const [uploadProgress, setUploadProgress] =
+        useState<{ done: number; total: number } | null>(null);
+
     const fileInputRef =
         useRef<HTMLInputElement>(null);
 
@@ -61,6 +96,25 @@ export function CreatePostForm({
         useRef<ReturnType<typeof setTimeout> | null>(
             null
         );
+
+    // ========================================
+    // 임시저장 글 불러오기 / 저장
+    // (앱을 닫거나 새로고침해도 쓰던 글이 남는다)
+    // ========================================
+
+    // 불러온 공간 id. 불러오기 전(같은 렌더)에는 빈 값으로 덮어쓰지 않는다.
+    const [draftGroupId, setDraftGroupId] =
+        useState<number | null>(null);
+
+    useEffect(() => {
+        setContent(readDraft(groupId));
+        setDraftGroupId(groupId);
+    }, [groupId]);
+
+    useEffect(() => {
+        if (draftGroupId !== groupId) return;
+        writeDraft(groupId, content);
+    }, [draftGroupId, groupId, content]);
 
     // ========================================
     // 사진 미리보기 URL
@@ -283,16 +337,22 @@ export function CreatePostForm({
     // 작성창 닫기
     // ========================================
 
+    // 닫아도 쓰던 글과 사진은 지우지 않는다. (실수로 닫아 글을 잃는 일 방지)
     function closeComposer() {
         if (isSubmitting) {
             return;
         }
 
+        setErrorMessage("");
+        setIsExpanded(false);
+    }
+
+    function clearComposer() {
         setContent("");
         setImages([]);
         setCurrentPreviewIndex(0);
         setErrorMessage("");
-        setIsExpanded(false);
+        writeDraft(groupId, "");
 
         if (fileInputRef.current) {
             fileInputRef.current.value =
@@ -306,6 +366,103 @@ export function CreatePostForm({
     }
 
     // ========================================
+    // 사진 선택: 가능한 사진은 추가하고, 안 되는 사진만 알려준다
+    // ========================================
+
+    async function addSelectedFiles(
+        selectedFiles: File[]
+    ) {
+        if (selectedFiles.length === 0) {
+            return;
+        }
+
+        const slots =
+            MAX_IMAGES - images.length;
+
+        const candidates =
+            selectedFiles.slice(0, Math.max(0, slots));
+
+        const overLimit =
+            selectedFiles.length - candidates.length;
+
+        setIsPreparing(true);
+        setErrorMessage("");
+
+        const accepted: File[] = [];
+        let wrongType = 0;
+        let tooLarge = 0;
+
+        for (const file of candidates) {
+            const result =
+                await prepareImageForUpload(file);
+
+            if (result.ok) {
+                accepted.push(result.file);
+            } else if (result.reason === "type") {
+                wrongType += 1;
+            } else {
+                tooLarge += 1;
+            }
+        }
+
+        setIsPreparing(false);
+
+        const notices: string[] = [];
+        if (overLimit > 0) {
+            notices.push(
+                `사진은 최대 ${MAX_IMAGES}장이라 ${overLimit}장은 빠졌어요.`
+            );
+        }
+        if (wrongType > 0) {
+            notices.push(
+                `${wrongType}장은 올릴 수 없는 형식이에요. ${IMAGE_TYPE_ERROR}`
+            );
+        }
+        if (tooLarge > 0) {
+            notices.push(
+                `${tooLarge}장은 용량이 너무 커서 뺐어요.`
+            );
+        }
+        if (notices.length > 0) {
+            setErrorMessage(notices.join(" "));
+        }
+
+        if (accepted.length === 0) {
+            return;
+        }
+
+        const previousLength =
+            images.length;
+
+        setImages((current) =>
+            [...current, ...accepted].slice(0, MAX_IMAGES)
+        );
+
+        // 새로 추가한 첫 번째 사진으로 이동
+        setCurrentPreviewIndex(
+            previousLength
+        );
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const slider =
+                    previewSliderRef.current;
+
+                if (!slider) {
+                    return;
+                }
+
+                slider.scrollTo({
+                    left:
+                        slider.clientWidth *
+                        previousLength,
+                    behavior: "smooth",
+                });
+            });
+        });
+    }
+
+    // ========================================
     // 게시글 등록
     // ========================================
 
@@ -314,65 +471,58 @@ export function CreatePostForm({
     ) {
         event.preventDefault();
 
-        if (isSubmitting) {
+        if (isSubmitting || isPreparing) {
             return;
         }
 
         const trimmedContent =
             content.trim();
 
-        if (
-            !trimmedContent &&
-            images.length === 0
-        ) {
+        // 글은 항상 필요 (사진만 올리기 불가)
+        if (!trimmedContent) {
             setErrorMessage(
-                "글이나 사진을 추가해주세요."
+                images.length > 0
+                    ? "사진과 함께 올릴 글을 써주세요."
+                    : "글을 입력해주세요."
             );
+            textareaRef.current?.focus();
             return;
         }
 
         if (
             trimmedContent.length >
-            500
+            MAX_CONTENT
         ) {
             setErrorMessage(
-                "글은 500자 이하로 입력해주세요."
+                `글은 ${MAX_CONTENT}자 이하로 입력해주세요.`
             );
             return;
         }
 
-        if (images.length > 5) {
+        if (images.length > MAX_IMAGES) {
             setErrorMessage(
-                "사진은 최대 5장까지 추가할 수 있습니다."
+                `사진은 최대 ${MAX_IMAGES}장까지 추가할 수 있어요.`
             );
             return;
         }
 
-        for (const image of images) {
-            if (
-                !isAllowedImageType(
-                    image.type
-                )
-            ) {
-                setErrorMessage(
-                    IMAGE_TYPE_ERROR
-                );
-                return;
-            }
-
-            if (
-                image.size >
-                5 * 1024 * 1024
-            ) {
-                setErrorMessage(
-                    "사진 한 장당 5MB 이하만 업로드할 수 있습니다."
-                );
-                return;
-            }
+        if (
+            typeof navigator !== "undefined" &&
+            navigator.onLine === false
+        ) {
+            setErrorMessage(
+                "인터넷에 연결되어 있지 않아요. 연결되면 다시 눌러주세요. 쓰던 글은 그대로 남아 있어요."
+            );
+            return;
         }
 
         setIsSubmitting(true);
         setErrorMessage("");
+        setUploadProgress(
+            images.length > 0
+                ? { done: 0, total: images.length }
+                : null
+        );
 
         const supabase =
             createClient();
@@ -443,6 +593,13 @@ export function CreatePostForm({
                             imagePath
                         );
 
+                        setUploadProgress(
+                            (current) =>
+                                current
+                                    ? { ...current, done: current.done + 1 }
+                                    : current
+                        );
+
                         return {
                             imagePath,
                             originalIndex:
@@ -504,24 +661,9 @@ export function CreatePostForm({
                 )
             );
 
-            setContent("");
-            setImages([]);
-            setCurrentPreviewIndex(0);
+            clearComposer();
             setIsExpanded(false);
-
-            if (
-                fileInputRef.current
-            ) {
-                fileInputRef.current.value =
-                    "";
-            }
-
-            if (
-                textareaRef.current
-            ) {
-                textareaRef.current.style.height =
-                    "auto";
-            }
+            toast.success("게시물을 공유했어요");
         } catch (error) {
             // 게시글 등록 실패 시
             // 이미 Storage에 올라간 사진 정리
@@ -530,28 +672,39 @@ export function CreatePostForm({
                 uploadedImagePaths.length >
                 0
             ) {
+                // 정리에 실패해도 사용자에게 보여줄 오류는 원래 오류
                 await supabase.storage
                     .from(
                         "post-images"
                     )
                     .remove(
                         uploadedImagePaths
-                    );
+                    )
+                    .catch(() => undefined);
             }
 
             setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : "게시글을 등록하지 못했습니다."
+                `${friendlyErrorMessage(
+                    error,
+                    "게시물을 올리지 못했어요. 잠시 후 다시 시도해주세요."
+                )} 쓰던 글과 사진은 그대로 남아 있어요.`
             );
         } finally {
             setIsSubmitting(false);
+            setUploadProgress(null);
         }
     }
 
     // ========================================
     // 접힌 작성 버튼
     // ========================================
+
+    const hasDraft =
+        content.trim().length > 0 ||
+        images.length > 0;
+
+    const isBusy =
+        isSubmitting || isPreparing;
 
     if (!isExpanded) {
         return (
@@ -574,13 +727,25 @@ export function CreatePostForm({
                     </div>
                 )}
 
-                <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-gray-400">
-                    {nickname}님, 오늘은
-                    어땠나요?
-                </span>
+                {hasDraft ? (
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-[12px] font-bold text-emerald-600">
+                            작성 중인 글이 있어요
+                        </span>
+                        <span className="mt-0.5 block truncate text-[14px] font-medium text-gray-700">
+                            {content.trim() ||
+                                `사진 ${images.length}장`}
+                        </span>
+                    </span>
+                ) : (
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-gray-400">
+                        {nickname}님, 오늘은
+                        어땠나요?
+                    </span>
+                )}
 
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600">
-                    <ImageIcon />
+                    {hasDraft ? <PencilIcon /> : <ImageIcon />}
                 </span>
             </button>
         );
@@ -615,16 +780,28 @@ export function CreatePostForm({
                         isSubmitting
                     }
                     className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 disabled:opacity-40"
-                    aria-label="작성 취소"
+                    aria-label="작성창 접기 (쓰던 글은 남아요)"
+                    title="접기 · 쓰던 글은 남아요"
                 >
                     <CloseIcon />
                 </button>
 
-                <p className="text-[13px] font-black">
+                <p className="text-[14px] font-black">
                     새 이야기
                 </p>
 
-                <div className="h-8 w-8" />
+                {hasDraft ? (
+                    <button
+                        type="button"
+                        onClick={clearComposer}
+                        disabled={isBusy}
+                        className="h-8 rounded-full px-2.5 text-[12px] font-bold text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40"
+                    >
+                        비우기
+                    </button>
+                ) : (
+                    <div className="h-8 w-8" />
+                )}
             </div>
 
             <div className="p-4 sm:p-5">
@@ -683,24 +860,51 @@ export function CreatePostForm({
                                     );
                                 }
                             }}
-                            placeholder="우리에게 무슨 일이 있었나요?"
+                            onKeyDown={(event) => {
+                                // PC: Ctrl/⌘ + Enter로 바로 공유
+                                if (
+                                    event.key === "Enter" &&
+                                    (event.metaKey || event.ctrlKey)
+                                ) {
+                                    event.preventDefault();
+                                    event.currentTarget.form?.requestSubmit();
+                                }
+                            }}
+                            placeholder={
+                                images.length > 0
+                                    ? "사진에 대한 이야기를 함께 써주세요"
+                                    : "우리에게 무슨 일이 있었나요?"
+                            }
                             maxLength={
-                                500
+                                MAX_CONTENT
                             }
                             rows={3}
                             disabled={
                                 isSubmitting
                             }
-                            className="max-h-[220px] min-h-[92px] w-full resize-none bg-transparent text-[15px] leading-6 text-gray-900 outline-none placeholder:text-gray-300 disabled:opacity-60"
+                            className="max-h-[220px] min-h-[92px] w-full resize-none bg-transparent text-[16px] leading-6 text-gray-900 outline-none placeholder:text-gray-300 disabled:opacity-60"
                         />
 
+                        {images.length > 0 &&
+                            !content.trim() && (
+                                <p className="mt-1 text-[12px] font-medium text-gray-400">
+                                    사진만으로는 올릴 수 없어요. 글을 함께 써주세요.
+                                </p>
+                            )}
+
                         {content.length >
-                            420 && (
-                                <div className="mt-1 text-right text-[10px] font-medium text-gray-300">
+                            400 && (
+                                <div
+                                    className={
+                                        content.length >= MAX_CONTENT
+                                            ? "mt-1 text-right text-[12px] font-bold text-red-500"
+                                            : "mt-1 text-right text-[12px] font-medium text-gray-400"
+                                    }
+                                >
                                     {
                                         content.length
                                     }
-                                    /500
+                                    /{MAX_CONTENT}
                                 </div>
                             )}
                     </div>
@@ -940,7 +1144,10 @@ export function CreatePostForm({
                     )}
 
                 {errorMessage && (
-                    <div className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-500">
+                    <div
+                        role="alert"
+                        className="mt-3 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] font-semibold leading-5 text-red-600"
+                    >
                         {errorMessage}
                     </div>
                 )}
@@ -950,20 +1157,22 @@ export function CreatePostForm({
                 작성창 하단
             ======================================== */}
 
-            <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2.5 sm:px-4">
+            <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-2.5 sm:px-4">
                 <label
                     className={
-                        isSubmitting
-                            ? "flex cursor-not-allowed items-center gap-2 rounded-full px-3 py-2 text-[13px] font-bold text-gray-300"
-                            : "flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-[13px] font-bold text-gray-600 transition hover:bg-gray-50 active:scale-95"
+                        isBusy || images.length >= MAX_IMAGES
+                            ? "flex cursor-not-allowed items-center gap-2 rounded-full px-3 py-2 text-[14px] font-bold text-gray-300"
+                            : "flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-[14px] font-bold text-gray-600 transition hover:bg-gray-50 active:scale-95"
                     }
                 >
-                    <ImageIcon />
+                    {isPreparing ? <LoadingIcon /> : <ImageIcon />}
 
                     <span>
-                        {images.length > 0
-                            ? `사진 추가 (${images.length}/5)`
-                            : "사진 추가"}
+                        {isPreparing
+                            ? "사진 준비 중"
+                            : images.length > 0
+                                ? `사진 ${images.length}/${MAX_IMAGES}`
+                                : "사진 추가"}
                     </span>
 
                     <input
@@ -974,8 +1183,8 @@ export function CreatePostForm({
                         accept="image/*"
                         multiple
                         disabled={
-                            isSubmitting ||
-                            images.length >= 5
+                            isBusy ||
+                            images.length >= MAX_IMAGES
                         }
                         className="hidden"
                         onChange={(
@@ -989,116 +1198,13 @@ export function CreatePostForm({
                                     []
                                 );
 
-                            if (
-                                selectedFiles.length ===
-                                0
-                            ) {
-                                return;
-                            }
-
-                            if (
-                                images.length +
-                                selectedFiles.length >
-                                5
-                            ) {
-                                setErrorMessage(
-                                    "사진은 최대 5장까지 추가할 수 있습니다."
-                                );
-
-                                event.target.value =
-                                    "";
-                                return;
-                            }
-
-                            const invalidFile =
-                                selectedFiles.find(
-                                    (file) =>
-                                        !isAllowedImageType(
-                                            file.type
-                                        )
-                                );
-
-                            if (
-                                invalidFile
-                            ) {
-                                setErrorMessage(
-                                    IMAGE_TYPE_ERROR
-                                );
-
-                                event.target.value =
-                                    "";
-                                return;
-                            }
-
-                            const oversizedFile =
-                                selectedFiles.find(
-                                    (file) =>
-                                        file.size >
-                                        5 *
-                                        1024 *
-                                        1024
-                                );
-
-                            if (
-                                oversizedFile
-                            ) {
-                                setErrorMessage(
-                                    "사진 한 장당 5MB 이하만 업로드할 수 있습니다."
-                                );
-
-                                event.target.value =
-                                    "";
-                                return;
-                            }
-
-                            const previousLength =
-                                images.length;
-
-                            setImages(
-                                (current) => [
-                                    ...current,
-                                    ...selectedFiles,
-                                ]
-                            );
-
-                            setErrorMessage(
-                                ""
-                            );
-
-                            // 새로 추가한 첫 번째 사진으로 이동
-                            setCurrentPreviewIndex(
-                                previousLength
-                            );
-
-                            requestAnimationFrame(
-                                () => {
-                                    requestAnimationFrame(
-                                        () => {
-                                            const slider =
-                                                previewSliderRef.current;
-
-                                            if (
-                                                !slider
-                                            ) {
-                                                return;
-                                            }
-
-                                            slider.scrollTo(
-                                                {
-                                                    left:
-                                                        slider.clientWidth *
-                                                        previousLength,
-                                                    behavior:
-                                                        "smooth",
-                                                }
-                                            );
-                                        }
-                                    );
-                                }
-                            );
-
+                            // 같은 사진을 다시 고를 수 있도록 바로 비운다
                             event.target.value =
                                 "";
+
+                            void addSelectedFiles(
+                                selectedFiles
+                            );
                         }}
                     />
                 </label>
@@ -1106,17 +1212,18 @@ export function CreatePostForm({
                 <button
                     type="submit"
                     disabled={
-                        isSubmitting ||
-                        (!content.trim() &&
-                            images.length ===
-                            0)
+                        isBusy ||
+                        !content.trim()
                     }
-                    className="flex h-10 min-w-[82px] items-center justify-center rounded-full bg-gray-950 px-5 text-[13px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                    className="flex h-11 min-w-[92px] items-center justify-center rounded-full bg-gray-950 px-5 text-[14px] font-black text-white transition hover:bg-black active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
                 >
                     {isSubmitting ? (
                         <span className="flex items-center gap-2">
                             <LoadingIcon />
-                            공유 중
+                            {uploadProgress &&
+                            uploadProgress.done < uploadProgress.total
+                                ? `사진 올리는 중 ${uploadProgress.done}/${uploadProgress.total}`
+                                : "공유 중"}
                         </span>
                     ) : (
                         "공유하기"
@@ -1278,6 +1385,25 @@ function LoadingIcon() {
                 strokeWidth="3"
                 strokeLinecap="round"
                 className="opacity-90"
+            />
+        </svg>
+    );
+}
+
+function PencilIcon() {
+    return (
+        <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+        >
+            <path
+                d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
             />
         </svg>
     );

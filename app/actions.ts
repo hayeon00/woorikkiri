@@ -73,13 +73,13 @@ export async function createPost(formData: FormData) {
         );
     }
 
-    // 글 또는 사진이 하나는 있어야 함
-    if (
-        !content &&
-        imagePaths.length === 0
-    ) {
+    // 글은 항상 필요 (사진만 올리기 불가)
+    // DB의 posts_content_check(1~500자)와 같은 규칙
+    if (!content) {
         throw new Error(
-            "글이나 사진을 추가해주세요."
+            imagePaths.length > 0
+                ? "사진과 함께 올릴 글을 써주세요."
+                : "글을 입력해주세요."
         );
     }
 
@@ -1213,9 +1213,9 @@ export async function updatePost(formData: FormData) {
         throw new Error("본인의 게시물만 수정할 수 있습니다.");
     }
 
-    // 사진도 없는데 글까지 비우는 것은 방지
-    if (!content && !post.image_path) {
-        throw new Error("내용이나 사진 중 하나는 있어야 합니다.");
+    // 글은 항상 필요 (DB의 posts_content_check와 같은 규칙)
+    if (!content) {
+        throw new Error("글을 입력해주세요. 글을 모두 지울 수는 없어요.");
     }
 
     const { error: updateError } = await supabase
