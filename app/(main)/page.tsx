@@ -546,6 +546,16 @@ async function Feed({
             {currentGroup && (
                 <FeedRealtime
                     groupId={currentGroup.id}
+                    currentUserId={user.id}
+                    postIds={postsWithImages.map(
+                        (post: { id: number }) => post.id
+                    )}
+                    commentIds={postsWithImages.flatMap(
+                        (post: { comments?: { id: number }[] }) =>
+                            (post.comments ?? []).map(
+                                (comment) => comment.id
+                            )
+                    )}
                 />
             )}
 
