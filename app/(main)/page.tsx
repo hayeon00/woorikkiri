@@ -28,11 +28,9 @@ import {
 } from "@/lib/feed-query";
 
 import {
-    toggleLike,
-} from "../actions";
-import {
     createCommentSafe,
     deleteCommentSafe,
+    setLikeSafe,
     deletePostSafe,
     updatePostSafe,
 } from "../safe-actions";
@@ -535,14 +533,6 @@ async function Feed({
                     name: string;
                 } => group !== null
             ) ?? [];
-
-    async function toggleLikeAction(
-        postId: number
-    ) {
-        "use server";
-
-        await toggleLike(postId);
-    }
 
     // ========================================
     // 화면
@@ -1156,8 +1146,8 @@ async function Feed({
                                                             initialCount={
                                                                 post.like_count
                                                             }
-                                                            toggleAction={
-                                                                toggleLikeAction
+                                                            setLikeAction={
+                                                                setLikeSafe
                                                             }
                                                         />
 

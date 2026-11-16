@@ -18,11 +18,9 @@ import {
 } from "@/components/profile-post-gallery";
 
 import {
-    toggleLike,
-} from "../../../actions";
-import {
     createCommentSafe,
     deleteCommentSafe,
+    setLikeSafe,
 } from "../../../safe-actions";
 
 // ========================================
@@ -897,21 +895,6 @@ async function ProfileContent({
             )
         );
 
-    // ========================================
-    // Server Actions
-    // ========================================
-
-    async function toggleLikeAction(
-        postId: number
-    ) {
-        "use server";
-
-        await toggleLike(
-            postId
-        );
-    }
-
-
     const isMe =
         user.id ===
         userId;
@@ -1077,8 +1060,8 @@ async function ProfileContent({
                         currentUserAvatarUrl={
                             myAvatarUrl
                         }
-                        toggleLikeAction={
-                            toggleLikeAction
+                        setLikeAction={
+                            setLikeSafe
                         }
                         createCommentAction={
                             createCommentSafe

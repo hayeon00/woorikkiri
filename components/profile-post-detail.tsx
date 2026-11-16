@@ -84,9 +84,10 @@ type ProfilePostDetailProps = {
 
     onClose: () => void;
 
-    toggleLikeAction: (
-        postId: number
-    ) => Promise<void>;
+    setLikeAction: (
+        postId: number,
+        liked: boolean
+    ) => Promise<FormState>;
 
     createCommentAction: (
         formData: FormData
@@ -103,7 +104,7 @@ export function ProfilePostDetail({
                                       currentUserId,
                                       currentUserAvatarUrl,
                                       onClose,
-                                      toggleLikeAction,
+                                      setLikeAction,
                                       createCommentAction,
                                       deleteCommentAction,
                                   }: ProfilePostDetailProps) {
@@ -258,8 +259,8 @@ export function ProfilePostDetail({
                                     initialCount={
                                         post.like_count
                                     }
-                                    toggleAction={
-                                        toggleLikeAction
+                                    setLikeAction={
+                                        setLikeAction
                                     }
                                 />
 

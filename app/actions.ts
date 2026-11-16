@@ -301,8 +301,17 @@ export async function createPost(formData: FormData) {
 }
 
 
-export async function toggleLike(
-    postId: number
+/**
+ * 좋아요를 원하는 상태(liked)로 맞춘다 (A2)
+ *
+ * 예전 toggleLike는 "지금 상태를 뒤집어"라는 요청이라, 연타 중 하나만
+ * 실패해도 화면과 서버가 반대가 됐다. "켜 줘/꺼 줘"는 여러 번 받아도
+ * 결과가 같으므로 중복·순서·동시 클릭에 안전하다.
+ * 알림·푸시는 실제로 새로 켜졌을 때만 보낸다.
+ */
+export async function setLike(
+    postId: number,
+    liked: boolean
 ) {
     const supabase =
         await createClient();
@@ -353,65 +362,24 @@ export async function toggleLike(
         );
     }
 
-    const [
-        { data: actorProfile },
-        { data: groupInfo },
-    ] = await Promise.all([
-        supabase
-            .from("profiles")
-            .select("nickname")
-            .eq("id", user.id)
-            .maybeSingle(),
-
-        supabase
-            .from("groups")
-            .select("name")
-            .eq("id", post.group_id)
-            .maybeSingle(),
-    ]);
-
-    const actorNickname =
-        actorProfile?.nickname ?? "친구";
-
-    const groupName =
-        groupInfo?.name ?? "공간";
+    const notifyOwner =
+        Boolean(post.user_id) &&
+        post.user_id !== user.id;
 
     // ========================================
-    // 기존 좋아요 확인
+    // 좋아요 끄기
     // ========================================
 
-    const {
-        data: existingLike,
-        error: likeCheckError,
-    } = await supabase
-        .from("likes")
-        .select("post_id")
-        .eq("post_id", postId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-    if (likeCheckError) {
-        throw new Error(
-            likeCheckError.message
-        );
-    }
-
-    // ========================================
-    // 이미 좋아요 상태
-    // → 좋아요 취소
-    // ========================================
-
-    if (existingLike) {
+    if (!liked) {
         const {
+            data: deletedLikes,
             error: deleteLikeError,
         } = await supabase
             .from("likes")
             .delete()
             .eq("post_id", postId)
-            .eq(
-                "user_id",
-                user.id
-            );
+            .eq("user_id", user.id)
+            .select("post_id");
 
         if (deleteLikeError) {
             throw new Error(
@@ -419,46 +387,22 @@ export async function toggleLike(
             );
         }
 
-        // ========================================
-        // 좋아요를 취소하면
-        // 기존 앱 내부 알림도 제거
-        //
-        // Push는 절대 보내지 않는다.
-        // ========================================
-
+        // 실제로 지운 경우에만 앱 내부 알림도 제거 (Push는 보내지 않는다)
         if (
-            post.user_id &&
-            post.user_id !==
-            user.id
+            notifyOwner &&
+            (deletedLikes?.length ?? 0) > 0
         ) {
             const {
-                error:
-                    notificationError,
+                error: notificationError,
             } = await supabase
-                .from(
-                    "notifications"
-                )
+                .from("notifications")
                 .delete()
-                .eq(
-                    "user_id",
-                    post.user_id
-                )
-                .eq(
-                    "actor_id",
-                    user.id
-                )
-                .eq(
-                    "post_id",
-                    postId
-                )
-                .eq(
-                    "type",
-                    "like"
-                );
+                .eq("user_id", post.user_id)
+                .eq("actor_id", user.id)
+                .eq("post_id", postId)
+                .eq("type", "like");
 
-            if (
-                notificationError
-            ) {
+            if (notificationError) {
                 console.error(
                     "좋아요 알림 삭제 실패:",
                     notificationError
@@ -467,9 +411,8 @@ export async function toggleLike(
         }
     }
 
-        // ========================================
-        // 아직 좋아요하지 않은 상태
-        // → 좋아요 추가
+    // ========================================
+    // 좋아요 켜기
     // ========================================
 
     else {
@@ -478,68 +421,73 @@ export async function toggleLike(
         } = await supabase
             .from("likes")
             .insert({
-                post_id:
-                postId,
-
-                user_id:
-                user.id,
+                post_id: postId,
+                user_id: user.id,
             });
 
-        if (insertLikeError) {
+        // 이미 좋아요 상태(중복 키)면 원하는 상태와 같으므로 성공으로 본다.
+        // 이때는 알림·푸시를 다시 보내지 않는다.
+        const alreadyLiked =
+            insertLikeError?.code === "23505";
+
+        if (
+            insertLikeError &&
+            !alreadyLiked
+        ) {
             throw new Error(
                 insertLikeError.message
             );
         }
 
-        // ========================================
-        // 다른 사람의 게시글일 때만 알림
-        // ========================================
-
         if (
-            post.user_id &&
-            post.user_id !==
-            user.id
+            notifyOwner &&
+            !alreadyLiked
         ) {
             const {
-                error:
-                    notificationError,
+                error: notificationError,
             } = await supabase
-                .from(
-                    "notifications"
-                )
+                .from("notifications")
                 .insert({
-                    user_id:
-                    post.user_id,
-
-                    actor_id:
-                    user.id,
-
-                    type:
-                        "like",
-
-                    post_id:
-                    postId,
+                    user_id: post.user_id,
+                    actor_id: user.id,
+                    type: "like",
+                    post_id: postId,
                 });
 
-            if (
-                notificationError
-            ) {
+            if (notificationError) {
                 console.error(
                     "좋아요 알림 생성 실패:",
                     notificationError
                 );
             }
 
-            // ========================================
-            // 좋아요를 추가했을 때만 Push
-            // ========================================
+            const [
+                { data: actorProfile },
+                { data: groupInfo },
+            ] = await Promise.all([
+                supabase
+                    .from("profiles")
+                    .select("nickname")
+                    .eq("id", user.id)
+                    .maybeSingle(),
+
+                supabase
+                    .from("groups")
+                    .select("name")
+                    .eq("id", post.group_id)
+                    .maybeSingle(),
+            ]);
+
+            const actorNickname =
+                actorProfile?.nickname ?? "친구";
+
+            const groupName =
+                groupInfo?.name ?? "공간";
 
             after(async () => {
                 try {
                     await sendPushToUsers(
-                        [
-                            post.user_id,
-                        ],
+                        [post.user_id],
                         "like",
                         {
                             title:
@@ -551,9 +499,7 @@ export async function toggleLike(
                             url: `/?group=${post.group_id}&post=${post.id}`,
                         }
                     );
-                } catch (
-                    pushError
-                    ) {
+                } catch (pushError) {
                     console.error(
                         "좋아요 Push 발송 실패:",
                         pushError
@@ -568,6 +514,7 @@ export async function toggleLike(
         "/notifications"
     );
 }
+
 export async function logout(formData?: FormData) {
     const supabase = await createClient();
 

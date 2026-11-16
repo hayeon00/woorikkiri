@@ -6,6 +6,7 @@ import {
     createPost,
     deleteComment,
     deletePost,
+    setLike,
     updateAvatar,
     updatePost,
 } from "./actions";
@@ -38,6 +39,16 @@ export async function updatePostSafe(formData: FormData) {
  */
 export async function createCommentSafe(formData: FormData) {
     return runFormAction(() => createComment(formData));
+}
+
+/**
+ * 좋아요를 원하는 상태로 맞추기 (A2)
+ *
+ * 실패를 결과값으로 돌려줘, 좋아요 버튼이 하트를 서버가 확인한 상태로
+ * 되돌리고 토스트로 안내할 수 있게 한다.
+ */
+export async function setLikeSafe(postId: number, liked: boolean) {
+    return runFormAction(() => setLike(postId, liked));
 }
 
 /** 폼 값이 양의 정수 ID가 아니면 null (기존처럼 조용히 무시하기 위함) */

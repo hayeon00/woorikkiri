@@ -78,9 +78,10 @@ type ProfilePostGalleryProps = {
         | string
         | null;
 
-    toggleLikeAction: (
-        postId: number
-    ) => Promise<void>;
+    setLikeAction: (
+        postId: number,
+        liked: boolean
+    ) => Promise<FormState>;
 
     createCommentAction: (
         formData: FormData
@@ -100,7 +101,7 @@ export function ProfilePostGallery({
                                        groups,
                                        currentUserId,
                                        currentUserAvatarUrl,
-                                       toggleLikeAction,
+                                       setLikeAction,
                                        createCommentAction,
                                        deleteCommentAction,
                                    }: ProfilePostGalleryProps) {
@@ -471,8 +472,8 @@ export function ProfilePostGallery({
                     currentUserAvatarUrl={
                         currentUserAvatarUrl
                     }
-                    toggleLikeAction={
-                        toggleLikeAction
+                    setLikeAction={
+                        setLikeAction
                     }
                     createCommentAction={
                         createCommentAction
