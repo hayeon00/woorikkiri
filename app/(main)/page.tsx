@@ -26,14 +26,15 @@ import {
     fetchFeedPage,
     limitIncludingPost,
 } from "@/lib/feed-query";
+import { signUrlsByPath } from "@/lib/signed-url-batch";
 
 import {
-    toggleLike,
-    createComment,
-    deletePost,
-    deleteComment,
-} from "../actions";
-import { updatePostSafe } from "../safe-actions";
+    createCommentSafe,
+    deleteCommentSafe,
+    setLikeSafe,
+    deletePostSafe,
+    updatePostSafe,
+} from "../safe-actions";
 
 async function Feed({
                         searchParams,
@@ -55,13 +56,20 @@ async function Feed({
     if (!user) {
         redirect("/auth/login");
     }
-// ========================================
-// 내 프로필 + 읽지 않은 알림 개수 병렬 조회
-// ========================================
+    // ========================================
+    // 데이터 준비 (F4)
+    //
+    // 서로 기다릴 필요가 없는 조회는 동시에 실행한다.
+    //   1) 사용자 확인
+    //   2) 내 프로필 · 안 읽은 알림 수 · 내 공간 목록
+    //   3) 현재 공간 멤버 · 게시물 (둘 다 "현재 공간"만 필요)
+    //   4) 게시물 사진 주소 · 프로필 사진 주소 (각각 일괄 생성)
+    // ========================================
 
     const [
         profileResult,
         notificationCountResult,
+        membershipResult,
     ] = await Promise.all([
         supabase
             .from("profiles")
@@ -77,48 +85,6 @@ async function Feed({
             })
             .eq("user_id", user.id)
             .eq("is_read", false),
-    ]);
-
-    const myProfile =
-        profileResult.data;
-
-    const unreadNotificationCount =
-        notificationCountResult.count;
-
-    if (profileResult.error) {
-        console.error(
-            "프로필 조회 실패:",
-            profileResult.error
-        );
-    }
-
-    if (notificationCountResult.error) {
-        console.error(
-            "알림 개수 조회 실패:",
-            notificationCountResult.error
-        );
-    }
-
-
-// ========================================
-// 내 프로필 사진 + 그룹 목록 병렬 처리
-// ========================================
-
-    const [
-        myAvatarResult,
-        membershipResult,
-    ] = await Promise.all([
-        myProfile?.avatar_url
-            ? supabase.storage
-                .from("avatars")
-                .createSignedUrl(
-                    myProfile.avatar_url,
-                    60 * 60
-                )
-            : Promise.resolve({
-                data: null,
-                error: null,
-            }),
 
         supabase
             .from("group_members")
@@ -144,17 +110,26 @@ async function Feed({
             }),
     ]);
 
-    const myAvatarUrl =
-        myAvatarResult.data?.signedUrl ??
-        null;
+    const myProfile =
+        profileResult.data;
+
+    const unreadNotificationCount =
+        notificationCountResult.count;
 
     const memberships =
         membershipResult.data;
 
-    if (myAvatarResult.error) {
+    if (profileResult.error) {
         console.error(
-            "내 프로필 사진 URL 생성 실패:",
-            myAvatarResult.error
+            "프로필 조회 실패:",
+            profileResult.error
+        );
+    }
+
+    if (notificationCountResult.error) {
+        console.error(
+            "알림 개수 조회 실패:",
+            notificationCountResult.error
         );
     }
 
@@ -164,53 +139,6 @@ async function Feed({
             membershipResult.error
         );
     }
-
-    const avatarUrlCache = new Map<
-        string,
-        Promise<string | null>
-    >();
-
-    function getAvatarSignedUrl(
-        path: string | null | undefined
-    ) {
-        if (!path) {
-            return Promise.resolve(null);
-        }
-
-        const cached =
-            avatarUrlCache.get(path);
-
-        if (cached) {
-            return cached;
-        }
-
-        const promise = supabase.storage
-            .from("avatars")
-            .createSignedUrl(
-                path,
-                60 * 60
-            )
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error(
-                        "프로필 사진 URL 생성 실패:",
-                        error
-                    );
-
-                    return null;
-                }
-
-                return data?.signedUrl ?? null;
-            });
-
-        avatarUrlCache.set(
-            path,
-            promise
-        );
-
-        return promise;
-    }
-
 
     const requestedGroupId =
         Number(params.group);
@@ -237,60 +165,9 @@ async function Feed({
         Date.parse(currentGroup.invite_code_expires_at) > Date.now();
 
     // ========================================
-    // 현재 그룹 멤버
-    // ========================================
-
-    let groupMembers: any[] = [];
-
-    if (currentGroup) {
-        const {
-            data,
-            error,
-        } = await supabase
-            .from("group_members")
-            .select(`
-                user_id,
-                joined_at,
-
-                profiles (
-                    nickname,
-                    avatar_url
-                )
-            `)
-            .eq(
-                "group_id",
-                currentGroup.id
-            )
-            .order("joined_at", {
-                ascending: true,
-            });
-
-        if (error) {
-            console.error(
-                "그룹 멤버 조회 실패:",
-                error
-            );
-        } else {
-            groupMembers =
-                data ?? [];
-        }
-    }
-    const groupMembersWithAvatars =
-        await Promise.all(
-            groupMembers.map(
-                async (member: any) => ({
-                    ...member,
-                    avatar_url:
-                        await getAvatarSignedUrl(
-                            member.profiles?.avatar_url
-                        ),
-                })
-            )
-        );
-
-    // ========================================
-    // 게시글 (B1: limit 기반 "더 보기")
+    // 현재 공간 멤버 + 게시글 (동시에)
     //
+    // B1: limit 기반 "더 보기".
     // 알림 딥링크(?post=)로 들어온 게시물이 첫 페이지 밖에 있으면
     // 그 게시물까지 보이도록 limit을 늘린다.
     // ========================================
@@ -300,25 +177,73 @@ async function Feed({
         FEED_PAGE
     );
 
-    const feedLimit = currentGroup
-        ? await limitIncludingPost(
-            supabase,
-            currentGroup.id,
-            Number(params.post),
-            requestedLimit,
-            FEED_PAGE
-        )
-        : requestedLimit;
+    const [
+        membersResult,
+        feedResult,
+    ] = await Promise.all([
+        currentGroup
+            ? supabase
+                .from("group_members")
+                .select(`
+                user_id,
+                joined_at,
+
+                profiles (
+                    nickname,
+                    avatar_url
+                )
+            `)
+                .eq(
+                    "group_id",
+                    currentGroup.id
+                )
+                .order("joined_at", {
+                    ascending: true,
+                })
+            : Promise.resolve({
+                data: [],
+                error: null,
+            }),
+
+        (async () => {
+            const limit = currentGroup
+                ? await limitIncludingPost(
+                    supabase,
+                    currentGroup.id,
+                    Number(params.post),
+                    requestedLimit,
+                    FEED_PAGE
+                )
+                : requestedLimit;
+
+            const page = await fetchFeedPage(
+                supabase,
+                currentGroup?.id ?? -1,
+                limit
+            );
+
+            return { limit, ...page };
+        })(),
+    ]);
+
+    let groupMembers: any[] = [];
+
+    if (membersResult.error) {
+        console.error(
+            "그룹 멤버 조회 실패:",
+            membersResult.error
+        );
+    } else {
+        groupMembers =
+            membersResult.data ?? [];
+    }
 
     const {
+        limit: feedLimit,
         posts,
         total: totalPostCount,
         error: postsError,
-    } = await fetchFeedPage(
-        supabase,
-        currentGroup?.id ?? -1,
-        feedLimit
-    );
+    } = feedResult;
 
     const nextFeedLimit = nextListLimit(
         feedLimit,
@@ -364,144 +289,151 @@ async function Feed({
 
 
     // ========================================
-    // 게시글 / 프로필 사진 Signed URL
+    // 게시물 사진 / 프로필 사진 Signed URL (각각 일괄, 동시에)
     // ========================================
 
     // 게시물 이미지 경로를 중복 없이 수집
-    const allImagePaths = [
-        ...new Set(
-            (posts ?? []).flatMap((post: any) =>
-                (post.post_images ?? []).map(
-                    (image: any) => image.image_path as string
-                )
+    const allImagePaths =
+        (posts ?? []).flatMap((post: any) =>
+            (post.post_images ?? []).map(
+                (image: any) => image.image_path as string
             )
-        ),
-    ];
-
-// 여러 이미지의 Signed URL을 한 번에 생성
-    const signedImageResult =
-        allImagePaths.length > 0
-            ? await supabase.storage
-                .from("post-images")
-                .createSignedUrls(
-                    allImagePaths,
-                    60 * 60
-                )
-            : null;
-
-    if (signedImageResult?.error) {
-        console.error(
-            "게시물 이미지 URL 일괄 생성 실패:",
-            signedImageResult.error
         );
+
+    // 화면에 나오는 모든 프로필 사진 경로 (나, 멤버, 작성자, 댓글 작성자)
+    // Supabase 타입은 profiles를 배열로 추론하지만 실제 값은 객체 하나다
+    // (외래 키 관계). 그래서 unknown으로 받아 안전하게 읽는다.
+    function avatarPathOf(row: unknown): string | null | undefined {
+        const profiles = (
+            row as { profiles?: { avatar_url?: string | null } | null } | null
+        )?.profiles;
+
+        return profiles?.avatar_url;
     }
 
-// 이미지 경로별 Signed URL 저장
-    const signedImageMap = new Map<
-        string,
-        string
-    >();
+    const allAvatarPaths: (string | null | undefined)[] = [
+        myProfile?.avatar_url,
+        ...groupMembers.map(avatarPathOf),
+        ...(posts ?? []).flatMap((post) => [
+            avatarPathOf(post),
+            ...(post.comments ?? []).map(avatarPathOf),
+        ]),
+    ];
 
-    signedImageResult?.data?.forEach(
-        (item, index) => {
-            if (item.signedUrl) {
-                signedImageMap.set(
-                    allImagePaths[index],
-                    item.signedUrl
-                );
-            }
-        }
-    );
+    const [
+        signedImageMap,
+        avatarUrlMap,
+    ] = await Promise.all([
+        signUrlsByPath(
+            supabase,
+            "post-images",
+            allImagePaths,
+            60 * 60
+        ),
+
+        signUrlsByPath(
+            supabase,
+            "avatars",
+            allAvatarPaths,
+            60 * 60
+        ),
+    ]);
+
+    function getAvatarSignedUrl(
+        path: string | null | undefined
+    ) {
+        return path
+            ? avatarUrlMap.get(path) ?? null
+            : null;
+    }
+
+    const myAvatarUrl =
+        getAvatarSignedUrl(
+            myProfile?.avatar_url
+        );
+
+    const groupMembersWithAvatars =
+        groupMembers.map(
+            (member: any) => ({
+                ...member,
+                avatar_url:
+                    getAvatarSignedUrl(
+                        member.profiles?.avatar_url
+                    ),
+            })
+        );
 
     const postsWithImages =
-        await Promise.all(
-            (posts ?? []).map(
-                async (post: any) => {
-                    const sortedPostImages = [
-                        ...(post.post_images ?? []),
-                    ].sort(
-                        (a: any, b: any) =>
-                            a.sort_order - b.sort_order
+        (posts ?? []).map(
+            (post: any) => {
+                const sortedPostImages = [
+                    ...(post.post_images ?? []),
+                ].sort(
+                    (a: any, b: any) =>
+                        a.sort_order - b.sort_order
+                );
+
+                const imageUrls = sortedPostImages
+                    .map((postImage: any) => {
+                        const imageUrl = signedImageMap.get(
+                            postImage.image_path
+                        );
+
+                        if (!imageUrl) {
+                            return null;
+                        }
+
+                        return {
+                            id: postImage.id,
+                            image_path: postImage.image_path,
+                            sort_order: postImage.sort_order,
+                            image_url: imageUrl,
+                        };
+                    })
+                    .filter(
+                        (image): image is {
+                            id: number;
+                            image_path: string;
+                            sort_order: number;
+                            image_url: string;
+                        } => image !== null
                     );
 
-                    const imageUrls = sortedPostImages
-                        .map((postImage: any) => {
-                            const imageUrl = signedImageMap.get(
-                                postImage.image_path
-                            );
-
-                            if (!imageUrl) {
-                                return null;
-                            }
-
-                            return {
-                                id: postImage.id,
-                                image_path: postImage.image_path,
-                                sort_order: postImage.sort_order,
-                                image_url: imageUrl,
-                            };
+                const commentsWithAvatars =
+                    (post.comments ?? []).map(
+                        (comment: any) => ({
+                            ...comment,
+                            avatar_url:
+                                getAvatarSignedUrl(
+                                    comment.profiles?.avatar_url
+                                ),
                         })
-                        .filter(
-                            (image): image is {
-                                id: number;
-                                image_path: string;
-                                sort_order: number;
-                                image_url: string;
-                            } => image !== null
-                        );
+                    );
 
-                    const authorAvatarUrl =
-                        await getAvatarSignedUrl(
+                const likedByMe =
+                    post.likes?.some(
+                        (like: any) =>
+                            like.user_id ===
+                            user.id
+                    ) ?? false;
+
+                return {
+                    ...post,
+                    image_urls:
+                    imageUrls,
+                    author_avatar_url:
+                        getAvatarSignedUrl(
                             post.profiles?.avatar_url
-                        );
-
-
-                    const commentsWithAvatars =
-                        await Promise.all(
-                            (
-                                post.comments ??
-                                []
-                            ).map(
-                                async (
-                                    comment: any
-                                ) => {
-                                    const commentAvatarUrl =
-                                        await getAvatarSignedUrl(
-                                            comment.profiles?.avatar_url
-                                        );
-
-                                    return {
-                                        ...comment,
-                                        avatar_url:
-                                        commentAvatarUrl,
-                                    };
-                                }
-                            )
-                        );
-
-                    const likedByMe =
-                        post.likes?.some(
-                            (like: any) =>
-                                like.user_id ===
-                                user.id
-                        ) ?? false;
-
-                    return {
-                        ...post,
-                        image_urls:
-                        imageUrls,
-                        author_avatar_url:
-                        authorAvatarUrl,
-                        comments:
-                        commentsWithAvatars,
-                        like_count:
-                            post.likes
-                                ?.length ?? 0,
-                        liked_by_me:
-                        likedByMe,
-                    };
-                }
-            )
+                        ),
+                    comments:
+                    commentsWithAvatars,
+                    like_count:
+                        post.likes
+                            ?.length ?? 0,
+                    liked_by_me:
+                    likedByMe,
+                };
+            }
         );
 
     // ========================================
@@ -534,52 +466,6 @@ async function Feed({
                 } => group !== null
             ) ?? [];
 
-    async function deletePostAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const postId = Number(
-            formData.get("post_id")
-        );
-
-        if (
-            !Number.isInteger(postId) ||
-            postId <= 0
-        ) {
-            return;
-        }
-
-        await deletePost(postId);
-    }
-
-    async function toggleLikeAction(
-        postId: number
-    ) {
-        "use server";
-
-        await toggleLike(postId);
-    }
-
-    async function deleteCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const commentId = Number(
-            formData.get("comment_id")
-        );
-
-        if (
-            !Number.isInteger(commentId) ||
-            commentId <= 0
-        ) {
-            return;
-        }
-
-        await deleteComment(commentId);
-    }
-
     // ========================================
     // 화면
     // ========================================
@@ -592,6 +478,16 @@ async function Feed({
             {currentGroup && (
                 <FeedRealtime
                     groupId={currentGroup.id}
+                    currentUserId={user.id}
+                    postIds={postsWithImages.map(
+                        (post: { id: number }) => post.id
+                    )}
+                    commentIds={postsWithImages.flatMap(
+                        (post: { comments?: { id: number }[] }) =>
+                            (post.comments ?? []).map(
+                                (comment) => comment.id
+                            )
+                    )}
                 />
             )}
 
@@ -1154,7 +1050,7 @@ async function Feed({
                                                                 updatePostSafe
                                                             }
                                                             deleteAction={
-                                                                deletePostAction
+                                                                deletePostSafe
                                                             }
                                                         />
                                                     )}
@@ -1192,8 +1088,8 @@ async function Feed({
                                                             initialCount={
                                                                 post.like_count
                                                             }
-                                                            toggleAction={
-                                                                toggleLikeAction
+                                                            setLikeAction={
+                                                                setLikeSafe
                                                             }
                                                         />
 
@@ -1295,9 +1191,9 @@ async function Feed({
                                                                     null,
                                                             })
                                                         )}
-                                                        createAction={createComment}
+                                                        createAction={createCommentSafe}
                                                         deleteAction={
-                                                            deleteCommentAction
+                                                            deleteCommentSafe
                                                         }
                                                     />
                                                 </div>

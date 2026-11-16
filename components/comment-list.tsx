@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import Link from "next/link";
 import {
     ReactNode,
@@ -70,7 +71,7 @@ type CommentListProps = {
 
     deleteAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 
     onReply: (
         comment: Comment
@@ -432,7 +433,7 @@ function CommentItem({
 
     deleteAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 
     onReply: (
         comment: Comment

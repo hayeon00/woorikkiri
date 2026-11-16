@@ -32,6 +32,9 @@
     "../../lib/form-state.ts",
     "../../lib/account-deletion.ts",
     "../../lib/time.ts",
-    "../../lib/friendly-error.ts"
+    "../../lib/friendly-error.ts",
+    "../../lib/realtime-refresh.ts",
+    "../../lib/stable-signed-url.ts",
+    "../../lib/signed-url-batch.ts"
   ]
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import {
     useEffect,
 } from "react";
@@ -83,24 +84,18 @@ type ProfilePostDetailProps = {
 
     onClose: () => void;
 
-    toggleLikeAction: (
-        postId: number
-    ) => Promise<void>;
+    setLikeAction: (
+        postId: number,
+        liked: boolean
+    ) => Promise<FormState>;
 
     createCommentAction: (
         formData: FormData
-    ) =>
-        | void
-        | Promise<
-        | {
-        commentId: number;
-    }
-        | undefined
-    >;
+    ) => Promise<FormState>;
 
     deleteCommentAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 export function ProfilePostDetail({
@@ -109,7 +104,7 @@ export function ProfilePostDetail({
                                       currentUserId,
                                       currentUserAvatarUrl,
                                       onClose,
-                                      toggleLikeAction,
+                                      setLikeAction,
                                       createCommentAction,
                                       deleteCommentAction,
                                   }: ProfilePostDetailProps) {
@@ -264,8 +259,8 @@ export function ProfilePostDetail({
                                     initialCount={
                                         post.like_count
                                     }
-                                    toggleAction={
-                                        toggleLikeAction
+                                    setLikeAction={
+                                        setLikeAction
                                     }
                                 />
 

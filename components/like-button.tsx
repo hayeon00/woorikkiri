@@ -5,21 +5,37 @@ import {
     useRef,
     useState,
 } from "react";
+import type { FormState } from "@/lib/form-state";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { toast } from "@/lib/toast";
 
 type LikeButtonProps = {
     postId: number;
     initialLiked: boolean;
     initialCount: number;
-    toggleAction: (
-        postId: number
-    ) => Promise<void>;
+    /** 좋아요를 원하는 상태(켜기/끄기)로 맞춘다 */
+    setLikeAction: (
+        postId: number,
+        liked: boolean
+    ) => Promise<FormState>;
 };
 
+const LIKE_FAILED_MESSAGE =
+    "좋아요를 반영하지 못했어요. 잠시 후 다시 시도해주세요.";
+
+/**
+ * 좋아요 버튼 (A2)
+ *
+ * - 누르면 하트·숫자를 즉시 바꾼다.
+ * - 서버에는 "마지막으로 원한 상태" 하나만 맞춘다. 보내는 중에 더 눌리면
+ *   응답 뒤 최종 상태만 다시 보내므로, 연타해도 요청은 최대 2번이다.
+ * - 실패하면 서버가 마지막으로 확인해 준 상태로 되돌리고 토스트로 안내한다.
+ */
 export function LikeButton({
                                postId,
                                initialLiked,
                                initialCount,
-                               toggleAction,
+                               setLikeAction,
                            }: LikeButtonProps) {
     const [liked, setLiked] =
         useState(initialLiked);
@@ -27,26 +43,31 @@ export function LikeButton({
     const [count, setCount] =
         useState(initialCount);
 
-    const likedRef =
+    // 서버가 마지막으로 확인해 준 상태 (실패 시 여기로 되돌린다)
+    const confirmedRef = useRef({
+        liked: initialLiked,
+        count: initialCount,
+    });
+
+    // 사용자가 마지막으로 원한 상태
+    const desiredRef =
         useRef(initialLiked);
 
-    const pendingClicksRef =
-        useRef(0);
-
-    const processingRef =
+    const syncingRef =
         useRef(false);
 
     useEffect(() => {
-        // 서버 요청 처리 중에는
-        // Realtime refresh가 로컬 UI를 덮어쓰지 않게 함
-        if (
-            processingRef.current ||
-            pendingClicksRef.current > 0
-        ) {
+        // 서버와 맞추는 중에는 새로고침 값이 로컬 화면을 덮어쓰지 않게 함
+        if (syncingRef.current) {
             return;
         }
 
-        likedRef.current =
+        confirmedRef.current = {
+            liked: initialLiked,
+            count: initialCount,
+        };
+
+        desiredRef.current =
             initialLiked;
 
         setLiked(
@@ -61,40 +82,88 @@ export function LikeButton({
         initialCount,
     ]);
 
-    async function processQueue() {
-        if (processingRef.current) {
+    async function syncWithServer() {
+        if (syncingRef.current) {
             return;
         }
 
-        processingRef.current =
-            true;
+        syncingRef.current = true;
 
-        while (
-            pendingClicksRef.current > 0
-            ) {
-            pendingClicksRef.current -= 1;
+        try {
+            while (
+                desiredRef.current !==
+                confirmedRef.current.liked
+                ) {
+                const target =
+                    desiredRef.current;
 
-            try {
-                await toggleAction(
-                    postId
-                );
-            } catch (error) {
-                console.error(
-                    "좋아요 처리 실패:",
-                    error
-                );
+                let failure: string | null =
+                    null;
+
+                try {
+                    const result =
+                        await setLikeAction(
+                            postId,
+                            target
+                        );
+
+                    if (result.status === "error") {
+                        failure =
+                            result.message ??
+                            LIKE_FAILED_MESSAGE;
+                    }
+                } catch (error) {
+                    failure =
+                        friendlyErrorMessage(
+                            error,
+                            LIKE_FAILED_MESSAGE
+                        );
+                }
+
+                if (failure) {
+                    console.error(
+                        "좋아요 처리 실패:",
+                        failure
+                    );
+
+                    // 서버가 확인해 준 상태로 되돌린다
+                    const confirmed =
+                        confirmedRef.current;
+
+                    desiredRef.current =
+                        confirmed.liked;
+
+                    setLiked(
+                        confirmed.liked
+                    );
+
+                    setCount(
+                        confirmed.count
+                    );
+
+                    toast.error(failure);
+                    break;
+                }
+
+                confirmedRef.current = {
+                    liked: target,
+                    count: Math.max(
+                        0,
+                        confirmedRef.current.count +
+                        (target ? 1 : -1)
+                    ),
+                };
             }
+        } finally {
+            syncingRef.current = false;
         }
-
-        processingRef.current =
-            false;
     }
 
     function handleClick() {
         const nextLiked =
-            !likedRef.current;
+            !desiredRef.current;
 
-        likedRef.current =
+        desiredRef.current =
             nextLiked;
 
         setLiked(
@@ -112,11 +181,7 @@ export function LikeButton({
                 )
         );
 
-        // 클릭한 횟수만 기록하고
-        // 서버 요청은 순서대로 처리
-        pendingClicksRef.current += 1;
-
-        void processQueue();
+        void syncWithServer();
     }
 
     return (

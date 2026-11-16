@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import {
     useEffect,
     useState,
@@ -85,18 +86,11 @@ type CommentSectionProps = {
 
     createAction: (
         formData: FormData
-    ) =>
-        | void
-        | Promise<
-        | {
-        commentId: number;
-    }
-        | undefined
-    >;
+    ) => Promise<FormState>;
 
     deleteAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 export function CommentSection({
@@ -286,11 +280,12 @@ export function CommentSection({
     }
 
     // ========================================
-    // 등록 실패 시 임시 댓글 제거
+    // 등록 실패 시 임시 댓글 제거 + 답글 대상 복구
     // ========================================
 
     function handleSubmitFailed(
-        tempId: string
+        tempId: string,
+        submittedReplyTarget: ReplyTarget
     ) {
         setOptimisticComments(
             (current) =>
@@ -300,6 +295,13 @@ export function CommentSection({
                         tempId
                 )
         );
+
+        // 다시 보내면 원래대로 답글로 저장되도록
+        if (submittedReplyTarget) {
+            setReplyTarget(
+                submittedReplyTarget
+            );
+        }
     }
 
     return (

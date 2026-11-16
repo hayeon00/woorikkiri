@@ -4,8 +4,11 @@ import {
     useEffect,
     useRef,
     useState,
+    useTransition,
 } from "react";
 import type { FormState } from "@/lib/form-state";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { toast } from "@/lib/toast";
 
 type PostMenuProps = {
     postId: number;
@@ -15,7 +18,7 @@ type PostMenuProps = {
     ) => Promise<FormState>;
     deleteAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 export function PostMenu({
@@ -41,6 +44,14 @@ export function PostMenu({
 
     const [editContent, setEditContent] =
         useState(currentContent);
+
+    // 삭제 처리 중 (서버 응답과 피드 갱신이 끝날 때까지 true)
+    const [isDeleting, startDeleteTransition] =
+        useTransition();
+
+    // 화면이 다시 그려지기 전에 연달아 눌려도 한 번만 요청하도록
+    const deleteRequestedRef =
+        useRef(false);
 
     const menuRef =
         useRef<HTMLDivElement>(null);
@@ -102,7 +113,7 @@ export function PostMenu({
                 setIsEditOpen(false);
             }
 
-            if (isConfirmOpen) {
+            if (isConfirmOpen && !isDeleting) {
                 setIsConfirmOpen(false);
             }
         }
@@ -121,6 +132,7 @@ export function PostMenu({
     }, [
         isEditOpen,
         isConfirmOpen,
+        isDeleting,
         currentContent,
     ]);
 
@@ -147,6 +159,57 @@ export function PostMenu({
     function openDeleteConfirm() {
         setIsMenuOpen(false);
         setIsConfirmOpen(true);
+    }
+
+    function closeDeleteConfirm() {
+        if (isDeleting) {
+            return;
+        }
+
+        setIsConfirmOpen(false);
+    }
+
+    // ========================================
+    // 삭제 실행
+    //
+    // 처리 중에는 버튼을 잠가 두 번 요청되지 않게 하고,
+    // 실패하면 화면은 그대로 둔 채 토스트로만 알린다.
+    // ========================================
+
+    function handleDelete() {
+        if (deleteRequestedRef.current) {
+            return;
+        }
+
+        deleteRequestedRef.current = true;
+
+        const formData = new FormData();
+        formData.set("post_id", String(postId));
+
+        startDeleteTransition(async () => {
+            try {
+                const result = await deleteAction(formData);
+
+                if (result.status === "error") {
+                    toast.error(
+                        result.message ??
+                            "게시물을 삭제하지 못했어요. 잠시 후 다시 시도해주세요."
+                    );
+                    return;
+                }
+
+                toast.success("게시물을 삭제했어요");
+            } catch (error) {
+                toast.error(
+                    friendlyErrorMessage(
+                        error,
+                        "게시물을 삭제하지 못했어요. 잠시 후 다시 시도해주세요."
+                    )
+                );
+            } finally {
+                deleteRequestedRef.current = false;
+            }
+        });
     }
 
     return (
@@ -348,9 +411,7 @@ export function PostMenu({
                             event.target ===
                             event.currentTarget
                         ) {
-                            setIsConfirmOpen(
-                                false
-                            );
+                            closeDeleteConfirm();
                         }
                     }}
                 >
@@ -383,34 +444,26 @@ export function PostMenu({
                         <div className="grid grid-cols-2 gap-2 border-t border-gray-100 p-3">
                             <button
                                 type="button"
-                                onClick={() =>
-                                    setIsConfirmOpen(
-                                        false
-                                    )
+                                onClick={
+                                    closeDeleteConfirm
                                 }
-                                className="flex h-11 items-center justify-center rounded-[14px] bg-gray-100 text-[13px] font-black text-gray-600 transition hover:bg-gray-200 active:scale-[0.98]"
+                                disabled={isDeleting}
+                                className="flex h-11 items-center justify-center rounded-[14px] bg-gray-100 text-[13px] font-black text-gray-600 transition hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 취소
                             </button>
 
-                            <form
-                                action={
-                                    deleteAction
-                                }
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                                aria-busy={isDeleting}
+                                className="flex h-11 w-full items-center justify-center rounded-[14px] bg-red-500 text-[13px] font-black text-white transition hover:bg-red-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-red-300"
                             >
-                                <input
-                                    type="hidden"
-                                    name="post_id"
-                                    value={postId}
-                                />
-
-                                <button
-                                    type="submit"
-                                    className="flex h-11 w-full items-center justify-center rounded-[14px] bg-red-500 text-[13px] font-black text-white transition hover:bg-red-600 active:scale-[0.98]"
-                                >
-                                    삭제
-                                </button>
-                            </form>
+                                {isDeleting
+                                    ? "삭제 중…"
+                                    : "삭제"}
+                            </button>
                         </div>
                     </div>
                 </div>

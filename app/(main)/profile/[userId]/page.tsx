@@ -18,10 +18,10 @@ import {
 } from "@/components/profile-post-gallery";
 
 import {
-    toggleLike,
-    createComment,
-    deleteComment,
-} from "../../../actions";
+    createCommentSafe,
+    deleteCommentSafe,
+    setLikeSafe,
+} from "../../../safe-actions";
 
 // ========================================
 // PROFILE CONTENT
@@ -895,56 +895,6 @@ async function ProfileContent({
             )
         );
 
-    // ========================================
-    // Server Actions
-    // ========================================
-
-    async function toggleLikeAction(
-        postId: number
-    ) {
-        "use server";
-
-        await toggleLike(
-            postId
-        );
-    }
-
-    async function createCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        return createComment(
-            formData
-        );
-    }
-
-    async function deleteCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const commentId =
-            Number(
-                formData.get(
-                    "comment_id"
-                )
-            );
-
-        if (
-            !Number.isInteger(
-                commentId
-            ) ||
-            commentId <= 0
-        ) {
-            return;
-        }
-
-        await deleteComment(
-            commentId
-        );
-    }
-
     const isMe =
         user.id ===
         userId;
@@ -1110,14 +1060,14 @@ async function ProfileContent({
                         currentUserAvatarUrl={
                             myAvatarUrl
                         }
-                        toggleLikeAction={
-                            toggleLikeAction
+                        setLikeAction={
+                            setLikeSafe
                         }
                         createCommentAction={
-                            createCommentAction
+                            createCommentSafe
                         }
                         deleteCommentAction={
-                            deleteCommentAction
+                            deleteCommentSafe
                         }
                     />
                 </section>

@@ -1,10 +1,16 @@
 "use client";
 
 import {
+    throwIfFailed,
+    type FormState,
+} from "@/lib/form-state";
+import {
     useEffect,
     useRef,
     useState,
 } from "react";
+import { friendlyErrorMessage } from "@/lib/friendly-error";
+import { toast } from "@/lib/toast";
 
 type Member = {
     userId: string;
@@ -44,14 +50,7 @@ type CommentFormProps = {
 
     createAction: (
         formData: FormData
-    ) =>
-        | void
-        | Promise<
-        | {
-        commentId: number;
-    }
-        | undefined
-    >;
+    ) => Promise<FormState>;
 
     replyTarget?: ReplyTarget;
 
@@ -61,8 +60,10 @@ type CommentFormProps = {
         comment: OptimisticCommentInput
     ) => void;
 
+    /** 등록 실패 시: 임시 댓글을 지우고 답글 대상을 되돌린다 */
     onSubmitFailed?: (
-        tempId: string
+        tempId: string,
+        replyTarget: ReplyTarget
     ) => void;
 };
 
@@ -100,12 +101,22 @@ export function CommentForm({
         setSelectedMentions,
     ] = useState<Member[]>([]);
 
+    // 등록 실패로 답글 대상을 되돌리는 중이면 true.
+    // 이때는 아래 효과가 입력창을 "@닉네임 "으로 덮어쓰지 않게 한다.
+    const restoringReplyRef =
+        useRef(false);
+
     // ========================================
     // 답글 선택
     // ========================================
 
     useEffect(() => {
         if (!replyTarget) {
+            return;
+        }
+
+        if (restoringReplyRef.current) {
+            restoringReplyRef.current = false;
             return;
         }
 
@@ -414,8 +425,11 @@ export function CommentForm({
         );
 
         try {
-            await createAction(
-                formData
+            // 운영 빌드에서도 서버 안내 문구를 받도록 결과값으로 받는다
+            throwIfFailed(
+                await createAction(
+                    formData
+                )
             );
         } catch (error) {
             console.error(
@@ -423,34 +437,81 @@ export function CommentForm({
                 error
             );
 
-            // 임시 댓글 제거
-            onSubmitFailed?.(
-                tempId
+            toast.error(
+                friendlyErrorMessage(
+                    error,
+                    "댓글을 등록하지 못했어요. 잠시 후 다시 시도해주세요."
+                )
             );
 
-            // 작성 내용 복구
+            // 답글 대상을 되돌릴 때 입력창이 "@닉네임 "으로 덮이지 않게
+            if (submittedReplyTarget) {
+                restoringReplyRef.current = true;
+            }
+
+            // 임시 댓글 제거 + 답글 대상 복구
+            onSubmitFailed?.(
+                tempId,
+                submittedReplyTarget
+            );
+
+            // 작성 내용과 멘션 복구
+            // (다시 보내면 처음 의도대로 답글·멘션이 함께 저장된다)
+            setSelectedMentions(
+                submittedMentions
+            );
+
             const input =
                 inputRef.current;
 
             if (input) {
                 input.value =
                     content;
+            }
 
-                input.focus();
+            // 입력창 잠금이 풀린 뒤에 포커스를 돌려준다
+            requestAnimationFrame(() => {
+                const restoredInput =
+                    inputRef.current;
+
+                if (!restoredInput) {
+                    return;
+                }
+
+                restoredInput.focus();
 
                 const length =
-                    input.value.length;
+                    restoredInput.value.length;
 
-                input.setSelectionRange(
+                restoredInput.setSelectionRange(
                     length,
                     length
                 );
-            }
+            });
         } finally {
             setIsSubmitting(
                 false
             );
         }
+    }
+
+    // ========================================
+    // 폼 제출
+    //
+    // <form action>을 쓰면 React가 처리 후 입력창을 자동으로 비워
+    // 실패 시 되돌린 글까지 지워진다. 직접 제출을 처리한다.
+    // ========================================
+
+    function handleFormSubmit(
+        event: React.FormEvent<HTMLFormElement>
+    ) {
+        event.preventDefault();
+
+        void handleSubmit(
+            new FormData(
+                event.currentTarget
+            )
+        );
     }
 
     return (
@@ -541,8 +602,8 @@ export function CommentForm({
                 ref={
                     formRef
                 }
-                action={
-                    handleSubmit
+                onSubmit={
+                    handleFormSubmit
                 }
                 className="flex items-center gap-2"
             >
