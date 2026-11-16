@@ -10,6 +10,7 @@ import { CommentSection } from "@/components/comment-section";
 import { PostImageSlider } from "@/components/post-image-slider";
 import { FeedRealtime } from "@/components/feed-realtime";
 import { LikeButton } from "@/components/like-button";
+import { CommentCount } from "@/components/comment-count";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
 import { PushOnboarding } from "@/components/push-onboarding";
 import { InviteLinkButton } from "@/components/invite-link-button";
@@ -1098,10 +1099,13 @@ async function Feed({
                                                             <CommentIcon />
 
                                                             <span className="text-[11px] font-black">
-                                                                {post
-                                                                        .comments
-                                                                        ?.length ??
-                                                                    0}
+                                                                <CommentCount
+                                                                    postId={post.id}
+                                                                    serverCount={
+                                                                        post.comments
+                                                                            ?.length ?? 0
+                                                                    }
+                                                                />
                                                             </span>
                                                         </div>
                                                     </div>

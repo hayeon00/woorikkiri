@@ -3,10 +3,12 @@
 import type { FormState } from "@/lib/form-state";
 import {
     useEffect,
+    useLayoutEffect,
     useState,
 } from "react";
 
 import { CommentList } from "@/components/comment-list";
+import { pendingComments as pendingCommentStore } from "@/lib/pending-comments";
 import {
     CommentForm,
     OptimisticCommentInput,
@@ -162,6 +164,35 @@ export function CommentSection({
         comments,
         currentUserId,
     ]);
+
+    // ========================================
+    // 게시물 댓글 수 숫자에 "보내는 중인 내 댓글 수" 알리기 (A7)
+    //
+    // 화면을 그리기 직전에 적어서, 서버 댓글로 바뀌는 순간
+    // 숫자가 잠깐 두 번 세어지지 않게 한다.
+    // ========================================
+
+    const pendingCount =
+        pendingComments.length;
+
+    useLayoutEffect(() => {
+        pendingCommentStore.set(
+            postId,
+            pendingCount
+        );
+    }, [
+        postId,
+        pendingCount,
+    ]);
+
+    useLayoutEffect(() => {
+        return () => {
+            pendingCommentStore.set(
+                postId,
+                0
+            );
+        };
+    }, [postId]);
 
     // ========================================
     // 답글 선택

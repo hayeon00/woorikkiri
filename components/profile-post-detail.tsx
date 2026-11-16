@@ -16,6 +16,7 @@ import {
 import {
     CommentSection,
 } from "@/components/comment-section";
+import { CommentCount } from "@/components/comment-count";
 
 type PostImage = {
     id: number;
@@ -268,11 +269,10 @@ export function ProfilePostDetail({
                                     <CommentIcon />
 
                                     <span className="text-[11px] font-black">
-                                        {
-                                            post
-                                                .comments
-                                                .length
-                                        }
+                                        <CommentCount
+                                            postId={post.id}
+                                            serverCount={post.comments.length}
+                                        />
                                     </span>
                                 </div>
                             </div>
@@ -290,11 +290,10 @@ export function ProfilePostDetail({
                                     </h3>
 
                                     <span className="text-[12px] font-bold text-gray-400">
-                                        {
-                                            post
-                                                .comments
-                                                .length
-                                        }
+                                        <CommentCount
+                                            postId={post.id}
+                                            serverCount={post.comments.length}
+                                        />
                                     </span>
                                 </div>
 
