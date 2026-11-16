@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { ProfilePostDetail } from "@/components/profile-post-detail";
+import { stableSignedUrl } from "@/lib/stable-signed-url";
 
 type Group = {
     id: number;
@@ -351,7 +352,9 @@ export function ProfilePostGallery({
                                             >
                                                 <img
                                                     src={
-                                                        firstImage.image_url
+                                                        stableSignedUrl(
+                                                            firstImage.image_url
+                                                        )
                                                     }
                                                     alt=""
                                                     className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"

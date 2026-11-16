@@ -33,6 +33,7 @@
     "../../lib/account-deletion.ts",
     "../../lib/time.ts",
     "../../lib/friendly-error.ts",
-    "../../lib/realtime-refresh.ts"
+    "../../lib/realtime-refresh.ts",
+    "../../lib/stable-signed-url.ts"
   ]
 }

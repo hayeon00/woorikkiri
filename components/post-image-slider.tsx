@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
 } from "react";
+import { stableSignedUrl } from "@/lib/stable-signed-url";
 
 type PostImage = {
     id: number;
@@ -174,7 +175,9 @@ export function PostImageSlider({
                             >
                                 <img
                                     src={
-                                        image.image_url
+                                        stableSignedUrl(
+                                            image.image_url
+                                        )
                                     }
                                     alt={`게시글 사진 ${
                                         index + 1
