@@ -65,7 +65,13 @@ export function BottomNav({
         );
 
     return (
-        <nav className="fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-1">
+        // D3: 넓은 화면(xl)의 피드에는 같은 메뉴가 왼쪽 사이드바에 있으므로
+        // 하단 내비게이션을 숨긴다. 사이드바가 없는 다른 화면에서는 그대로 둔다.
+        <nav
+            className={`fixed bottom-0 left-1/2 z-50 flex h-[calc(64px+env(safe-area-inset-bottom))] w-full max-w-[720px] -translate-x-1/2 items-start border-x border-t border-black/[0.06] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-1${
+                isFeed ? " xl:hidden" : ""
+            }`}
+        >
 
             {/* ========================================
                 피드
