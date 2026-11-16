@@ -19,9 +19,11 @@ import {
 
 import {
     toggleLike,
-    createComment,
 } from "../../../actions";
-import { deleteCommentSafe } from "../../../safe-actions";
+import {
+    createCommentSafe,
+    deleteCommentSafe,
+} from "../../../safe-actions";
 
 // ========================================
 // PROFILE CONTENT
@@ -909,16 +911,6 @@ async function ProfileContent({
         );
     }
 
-    async function createCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        return createComment(
-            formData
-        );
-    }
-
 
     const isMe =
         user.id ===
@@ -1089,7 +1081,7 @@ async function ProfileContent({
                             toggleLikeAction
                         }
                         createCommentAction={
-                            createCommentAction
+                            createCommentSafe
                         }
                         deleteCommentAction={
                             deleteCommentSafe

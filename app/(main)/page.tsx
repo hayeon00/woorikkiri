@@ -29,9 +29,9 @@ import {
 
 import {
     toggleLike,
-    createComment,
 } from "../actions";
 import {
+    createCommentSafe,
     deleteCommentSafe,
     deletePostSafe,
     updatePostSafe,
@@ -1259,7 +1259,7 @@ async function Feed({
                                                                     null,
                                                             })
                                                         )}
-                                                        createAction={createComment}
+                                                        createAction={createCommentSafe}
                                                         deleteAction={
                                                             deleteCommentSafe
                                                         }

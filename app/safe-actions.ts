@@ -2,6 +2,7 @@
 
 import { runFormAction } from "@/lib/form-state";
 import {
+    createComment,
     createPost,
     deleteComment,
     deletePost,
@@ -27,6 +28,16 @@ export async function updateAvatarSafe(formData: FormData) {
 
 export async function updatePostSafe(formData: FormData) {
     return runFormAction(() => updatePost(formData));
+}
+
+/**
+ * 댓글·답글 등록 (A3)
+ *
+ * 실패 이유("답글을 작성할 댓글을 찾을 수 없습니다." 등)를 운영 빌드에서도
+ * 클라이언트에 전달해, 댓글 창이 토스트로 안내하고 입력 내용을 되돌릴 수 있게 한다.
+ */
+export async function createCommentSafe(formData: FormData) {
+    return runFormAction(() => createComment(formData));
 }
 
 /** 폼 값이 양의 정수 ID가 아니면 null (기존처럼 조용히 무시하기 위함) */

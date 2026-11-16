@@ -90,14 +90,7 @@ type ProfilePostDetailProps = {
 
     createCommentAction: (
         formData: FormData
-    ) =>
-        | void
-        | Promise<
-        | {
-        commentId: number;
-    }
-        | undefined
-    >;
+    ) => Promise<FormState>;
 
     deleteCommentAction: (
         formData: FormData
