@@ -437,6 +437,16 @@ async function Feed({
             }
         );
 
+    // F6: 첫 화면에 바로 보일 사진 게시물(위에서 3번째 안의 첫 사진 게시물)만
+    // 첫 사진을 바로 받는다. 나머지 사진은 지연 로딩.
+    const firstScreenPhotoPostId =
+        postsWithImages
+            .slice(0, 3)
+            .find(
+                (post: { image_urls?: unknown[] }) =>
+                    (post.image_urls?.length ?? 0) > 0
+            )?.id ?? null;
+
     // ========================================
     // 그룹 선택기에 전달할 그룹 목록
     // ========================================
@@ -1071,6 +1081,10 @@ async function Feed({
                                                     <PostImageSlider
                                                         images={
                                                             post.image_urls
+                                                        }
+                                                        priority={
+                                                            post.id ===
+                                                            firstScreenPhotoPostId
                                                         }
                                                     />
                                                 )}

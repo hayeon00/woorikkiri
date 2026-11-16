@@ -14,8 +14,15 @@ type PostImage = {
 
 export function PostImageSlider({
                                     images,
+                                    priority = false,
                                 }: {
     images: PostImage[];
+    /**
+     * F6: 첫 화면에 바로 보이는 큰 사진이면 true.
+     * 첫 장만 바로 받고, 나머지 사진은 화면(또는 옆으로 넘길 위치)에
+     * 가까워질 때 받는다.
+     */
+    priority?: boolean;
 }) {
     const sliderRef =
         useRef<HTMLDivElement>(null);
@@ -185,6 +192,20 @@ export function PostImageSlider({
                                     draggable={
                                         false
                                     }
+                                    // F6: 화면 밖 사진은 가까워질 때 받는다
+                                    loading={
+                                        priority &&
+                                        index === 0
+                                            ? "eager"
+                                            : "lazy"
+                                    }
+                                    fetchPriority={
+                                        priority &&
+                                        index === 0
+                                            ? "high"
+                                            : undefined
+                                    }
+                                    decoding="async"
                                     className="
                                         absolute
                                         inset-0
