@@ -45,6 +45,38 @@ export function PostMenu({
     const [editContent, setEditContent] =
         useState(currentContent);
 
+    // A5: 수정 저장 중 (버튼·닫기 잠금)
+    // 트랜지션으로 감싸서, 서버 응답 뒤 피드가 새 글로 다시 그려질 때까지
+    // "저장 중…"을 유지하고 그때 창을 닫는다 (닫혔는데 옛 글이 잠깐 보이지 않게).
+    const [isSaving, startSaveTransition] =
+        useTransition();
+
+    // 화면이 다시 그려지기 전에 연달아 눌려도 한 번만 저장하도록
+    const savingRef =
+        useRef(false);
+
+    // 저장에 성공했고, 창이 닫히면 토스트를 띄워야 하는지
+    const savedRef =
+        useRef(false);
+
+    useEffect(() => {
+        if (!isSaving && savedRef.current) {
+            savedRef.current = false;
+            toast.success("게시물을 수정했어요");
+        }
+    }, [isSaving]);
+
+    // A5: 고친 내용을 버릴지 묻는 중
+    const [
+        isDiscardConfirmOpen,
+        setIsDiscardConfirmOpen,
+    ] = useState(false);
+
+    // 원래 글에서 바뀐 게 있는지 (서버도 앞뒤 공백을 지우고 저장한다)
+    const isEditDirty =
+        editContent.trim() !==
+        currentContent.trim();
+
     // 삭제 처리 중 (서버 응답과 피드 갱신이 끝날 때까지 true)
     const [isDeleting, startDeleteTransition] =
         useTransition();
@@ -91,6 +123,15 @@ export function PostMenu({
     // ESC로 모달 닫기
     // ========================================
 
+    // ESC 처리에서 항상 최신 "닫기 요청"(고친 내용·저장 중 여부 반영)을 부르기 위해
+    const requestCloseEditRef =
+        useRef(requestCloseEdit);
+
+    useEffect(() => {
+        requestCloseEditRef.current =
+            requestCloseEdit;
+    });
+
     useEffect(() => {
         if (
             !isEditOpen &&
@@ -107,10 +148,12 @@ export function PostMenu({
             }
 
             if (isEditOpen) {
-                setEditContent(
-                    currentContent
-                );
-                setIsEditOpen(false);
+                // "버릴까요?"가 떠 있으면 ESC는 "계속 수정"
+                if (isDiscardConfirmOpen) {
+                    setIsDiscardConfirmOpen(false);
+                } else {
+                    requestCloseEditRef.current();
+                }
             }
 
             if (isConfirmOpen && !isDeleting) {
@@ -134,6 +177,7 @@ export function PostMenu({
         isConfirmOpen,
         isDeleting,
         currentContent,
+        isDiscardConfirmOpen,
     ]);
 
     // ========================================
@@ -149,7 +193,93 @@ export function PostMenu({
     function closeEdit() {
         setEditContent(currentContent);
         setEditError(null);
+        setIsDiscardConfirmOpen(false);
         setIsEditOpen(false);
+    }
+
+    // ========================================
+    // 수정 창 닫기 요청 (A5)
+    //
+    // 바깥 누르기·ESC·취소·X 모두 여기로 온다.
+    // 저장 중에는 닫지 않고, 고친 내용이 있으면 버릴지 먼저 묻는다.
+    // ========================================
+
+    function requestCloseEdit() {
+        if (savingRef.current) {
+            return;
+        }
+
+        if (isEditDirty) {
+            setIsDiscardConfirmOpen(true);
+            return;
+        }
+
+        closeEdit();
+    }
+
+    // ========================================
+    // 수정 저장 (A5)
+    //
+    // <form action> 안에서 네트워크 오류가 나면 화면 전체가 오류
+    // 화면으로 바뀌었다. 직접 제출을 처리하고 오류는 창 안에서 안내한다.
+    // ========================================
+
+    async function handleEditSubmit(
+        event: React.FormEvent<HTMLFormElement>
+    ) {
+        event.preventDefault();
+
+        if (
+            savingRef.current ||
+            !editContent.trim()
+        ) {
+            return;
+        }
+
+        // 바꾼 게 없으면 서버에 보내지 않고 닫는다
+        if (!isEditDirty) {
+            closeEdit();
+            return;
+        }
+
+        savingRef.current = true;
+        setEditError(null);
+        setIsDiscardConfirmOpen(false);
+
+        const formData = new FormData();
+        formData.set("post_id", String(postId));
+        formData.set("content", editContent);
+
+        startSaveTransition(async () => {
+            try {
+                const result =
+                    await updateAction(formData);
+
+                if (result.status === "error") {
+                    setEditError(
+                        result.message ??
+                            "게시물을 수정하지 못했어요. 잠시 후 다시 시도해주세요."
+                    );
+                    return;
+                }
+
+                // await 뒤의 상태 변경도 같은 트랜지션으로 묶어
+                // 새 글로 다시 그린 화면과 함께 창이 닫히게 한다.
+                savedRef.current = true;
+                startSaveTransition(() => {
+                    setIsEditOpen(false);
+                });
+            } catch (error) {
+                setEditError(
+                    friendlyErrorMessage(
+                        error,
+                        "게시물을 수정하지 못했어요. 잠시 후 다시 시도해주세요."
+                    )
+                );
+            } finally {
+                savingRef.current = false;
+            }
+        });
     }
 
     // ========================================
@@ -276,7 +406,7 @@ export function PostMenu({
                             event.target ===
                             event.currentTarget
                         ) {
-                            closeEdit();
+                            requestCloseEdit();
                         }
                     }}
                 >
@@ -287,21 +417,11 @@ export function PostMenu({
                         className="w-full max-w-[420px] overflow-hidden rounded-[26px] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.25)]"
                     >
                         <form
-                            action={async (formData) => {
-                                setEditError(null);
-                                const result = await updateAction(formData);
-                                if (result.status === "error") {
-                                    setEditError(result.message);
-                                    return;
-                                }
-                                setIsEditOpen(false);
-                            }}
+                            onSubmit={
+                                handleEditSubmit
+                            }
+                            aria-busy={isSaving}
                         >
-                            <input
-                                type="hidden"
-                                name="post_id"
-                                value={postId}
-                            />
 
                             <div className="px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
                                 <div className="flex items-center justify-between">
@@ -315,10 +435,11 @@ export function PostMenu({
                                     <button
                                         type="button"
                                         onClick={
-                                            closeEdit
+                                            requestCloseEdit
                                         }
+                                        disabled={isSaving}
                                         aria-label="수정 닫기"
-                                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40"
                                     >
                                         <CloseIcon />
                                     </button>
@@ -339,6 +460,7 @@ export function PostMenu({
                                         )
                                     }
                                     maxLength={500}
+                                    readOnly={isSaving}
                                     autoFocus
                                     rows={6}
                                     placeholder="내용을 입력해주세요."
@@ -376,25 +498,70 @@ export function PostMenu({
                                 </p>
                             )}
 
-                            <div className="grid grid-cols-2 gap-2 border-t border-gray-100 p-3">
-                                <button
-                                    type="button"
-                                    onClick={
-                                        closeEdit
-                                    }
-                                    className="flex h-11 items-center justify-center rounded-[14px] bg-gray-100 text-[13px] font-black text-gray-600 transition hover:bg-gray-200 active:scale-[0.98]"
+                            {isDiscardConfirmOpen ? (
+                                // A5: 고친 내용이 있을 때 닫기 전에 묻기
+                                <div
+                                    role="alertdialog"
+                                    aria-label="수정한 내용을 버릴까요?"
+                                    className="border-t border-gray-100 p-3"
                                 >
-                                    취소
-                                </button>
+                                    <p className="px-1 pb-2 text-[13px] font-bold text-gray-700">
+                                        수정한 내용을 버릴까요?
+                                    </p>
 
-                                <button
-                                    type="submit"
-                                    disabled={!editContent.trim()}
-                                    className="flex h-11 items-center justify-center rounded-[14px] bg-black text-[13px] font-black text-white transition hover:bg-gray-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-                                >
-                                    저장
-                                </button>
-                            </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setIsDiscardConfirmOpen(
+                                                    false
+                                                )
+                                            }
+                                            autoFocus
+                                            className="flex h-11 items-center justify-center rounded-[14px] bg-gray-950 text-[13px] font-black text-white transition hover:bg-gray-800 active:scale-[0.98]"
+                                        >
+                                            계속 수정
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={
+                                                closeEdit
+                                            }
+                                            className="flex h-11 items-center justify-center rounded-[14px] bg-red-50 text-[13px] font-black text-red-500 transition hover:bg-red-100 active:scale-[0.98]"
+                                        >
+                                            버리기
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-2 border-t border-gray-100 p-3">
+                                    <button
+                                        type="button"
+                                        onClick={
+                                            requestCloseEdit
+                                        }
+                                        disabled={isSaving}
+                                        className="flex h-11 items-center justify-center rounded-[14px] bg-gray-100 text-[13px] font-black text-gray-600 transition hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        취소
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        disabled={
+                                            !editContent.trim() ||
+                                            isSaving
+                                        }
+                                        aria-busy={isSaving}
+                                        className="flex h-11 items-center justify-center rounded-[14px] bg-black text-[13px] font-black text-white transition hover:bg-gray-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+                                    >
+                                        {isSaving
+                                            ? "저장 중…"
+                                            : "저장"}
+                                    </button>
+                                </div>
+                            )}
                         </form>
                     </div>
                 </div>
