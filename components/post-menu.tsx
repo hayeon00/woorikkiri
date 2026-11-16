@@ -342,7 +342,7 @@ export function PostMenu({
                                     autoFocus
                                     rows={6}
                                     placeholder="내용을 입력해주세요."
-                                    className="mt-4 min-h-[150px] w-full resize-none rounded-[18px] border border-gray-200 bg-gray-50 px-4 py-3 text-[14px] leading-6 outline-none transition placeholder:text-gray-300 focus:border-gray-400 focus:bg-white"
+                                    className="mt-4 min-h-[150px] w-full resize-none rounded-[18px] border border-gray-200 bg-gray-50 px-4 py-3 text-[16px] leading-6 outline-none transition placeholder:text-gray-300 sm:text-[14px] focus:border-gray-400 focus:bg-white"
                                 />
 
                                 <div className="mt-2 flex items-center justify-between">

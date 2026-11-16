@@ -125,3 +125,18 @@
             2.2s
             ease-out;
 }
+
+/*
+ * D1: 확대를 허용하면서, 버튼을 빠르게 두 번 눌렀을 때(좋아요 연타 등)
+ * 브라우저가 "두 번 탭 확대"로 받아들이지 않게 한다.
+ * 두 손가락 확대는 그대로 된다.
+ */
+a,
+button,
+input,
+textarea,
+select,
+label,
+[role="button"] {
+  touch-action: manipulation;
+}
