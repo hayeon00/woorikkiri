@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import {
     useEffect,
 } from "react";
@@ -100,7 +101,7 @@ type ProfilePostDetailProps = {
 
     deleteCommentAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 export function ProfilePostDetail({

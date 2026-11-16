@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import {
     useEffect,
     useState,
@@ -96,7 +97,7 @@ type CommentSectionProps = {
 
     deleteAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 export function CommentSection({

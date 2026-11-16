@@ -20,8 +20,8 @@ import {
 import {
     toggleLike,
     createComment,
-    deleteComment,
 } from "../../../actions";
+import { deleteCommentSafe } from "../../../safe-actions";
 
 // ========================================
 // PROFILE CONTENT
@@ -919,31 +919,6 @@ async function ProfileContent({
         );
     }
 
-    async function deleteCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const commentId =
-            Number(
-                formData.get(
-                    "comment_id"
-                )
-            );
-
-        if (
-            !Number.isInteger(
-                commentId
-            ) ||
-            commentId <= 0
-        ) {
-            return;
-        }
-
-        await deleteComment(
-            commentId
-        );
-    }
 
     const isMe =
         user.id ===
@@ -1117,7 +1092,7 @@ async function ProfileContent({
                             createCommentAction
                         }
                         deleteCommentAction={
-                            deleteCommentAction
+                            deleteCommentSafe
                         }
                     />
                 </section>

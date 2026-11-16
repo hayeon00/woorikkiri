@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormState } from "@/lib/form-state";
 import {
     useMemo,
     useState,
@@ -94,7 +95,7 @@ type ProfilePostGalleryProps = {
 
     deleteCommentAction: (
         formData: FormData
-    ) => void | Promise<void>;
+    ) => Promise<FormState>;
 };
 
 type PostType =

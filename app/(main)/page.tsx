@@ -30,10 +30,12 @@ import {
 import {
     toggleLike,
     createComment,
-    deletePost,
-    deleteComment,
 } from "../actions";
-import { updatePostSafe } from "../safe-actions";
+import {
+    deleteCommentSafe,
+    deletePostSafe,
+    updatePostSafe,
+} from "../safe-actions";
 
 async function Feed({
                         searchParams,
@@ -534,50 +536,12 @@ async function Feed({
                 } => group !== null
             ) ?? [];
 
-    async function deletePostAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const postId = Number(
-            formData.get("post_id")
-        );
-
-        if (
-            !Number.isInteger(postId) ||
-            postId <= 0
-        ) {
-            return;
-        }
-
-        await deletePost(postId);
-    }
-
     async function toggleLikeAction(
         postId: number
     ) {
         "use server";
 
         await toggleLike(postId);
-    }
-
-    async function deleteCommentAction(
-        formData: FormData
-    ) {
-        "use server";
-
-        const commentId = Number(
-            formData.get("comment_id")
-        );
-
-        if (
-            !Number.isInteger(commentId) ||
-            commentId <= 0
-        ) {
-            return;
-        }
-
-        await deleteComment(commentId);
     }
 
     // ========================================
@@ -1154,7 +1118,7 @@ async function Feed({
                                                                 updatePostSafe
                                                             }
                                                             deleteAction={
-                                                                deletePostAction
+                                                                deletePostSafe
                                                             }
                                                         />
                                                     )}
@@ -1297,7 +1261,7 @@ async function Feed({
                                                         )}
                                                         createAction={createComment}
                                                         deleteAction={
-                                                            deleteCommentAction
+                                                            deleteCommentSafe
                                                         }
                                                     />
                                                 </div>
