@@ -60,11 +60,12 @@ export const metadata: Metadata = {
     },
 };
 
+// D1: 확대(두 손가락 줌)를 막지 않는다 (WCAG 1.4.4).
+// 대신 iOS의 입력칸 자동 확대를 막기 위해 모든 입력칸은
+// 휴대폰에서 글자 16px 이상으로 둔다 (예: text-[16px] sm:text-[14px]).
 export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
     viewportFit: "cover",
     themeColor: "#f6f6f4",
 };

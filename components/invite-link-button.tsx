@@ -94,7 +94,7 @@ export function InviteLinkButton({
                             value={fallbackUrl}
                             onFocus={(event) => event.currentTarget.select()}
                             autoFocus
-                            className="mt-4 w-full rounded-[12px] bg-gray-100 px-3 py-3 text-[14px] text-gray-800 outline-none"
+                            className="mt-4 w-full rounded-[12px] bg-gray-100 px-3 py-3 text-[16px] text-gray-800 outline-none sm:text-[14px]"
                         />
                         <button
                             type="button"
