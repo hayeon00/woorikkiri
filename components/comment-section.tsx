@@ -129,65 +129,33 @@ export function CommentSection({
         "사용자";
 
     // ========================================
-    // 서버의 실제 댓글이 들어오면
-    // 해당 임시 댓글 제거
+    // 서버의 실제 댓글이 들어오면 해당 임시 댓글 제거
+    //
+    // 화면에서는 같은 렌더에서 바로 빼서, 진짜 댓글과 임시 댓글이
+    // 잠깐 두 개로 보이며 화면이 늘었다 줄어드는 일을 막는다.
+    // 상태 정리는 그 뒤 효과에서 한다.
     // ========================================
+
+    const pendingComments =
+        optimisticComments.filter(
+            (optimistic) =>
+                !isConfirmedByServer(
+                    optimistic,
+                    comments,
+                    currentUserId
+                )
+        );
 
     useEffect(() => {
         setOptimisticComments(
             (current) =>
                 current.filter(
-                    (
-                        optimistic
-                    ) => {
-                        const exists =
-                            comments.some(
-                                (
-                                    comment
-                                ) => {
-                                    if (
-                                        comment.user_id !==
-                                        currentUserId
-                                    ) {
-                                        return false;
-                                    }
-
-                                    if (
-                                        comment.content !==
-                                        optimistic.content
-                                    ) {
-                                        return false;
-                                    }
-
-                                    if (
-                                        comment.parent_id !==
-                                        optimistic.parent_id
-                                    ) {
-                                        return false;
-                                    }
-
-                                    const serverTime =
-                                        new Date(
-                                            comment.created_at
-                                        ).getTime();
-
-                                    const optimisticTime =
-                                        new Date(
-                                            optimistic.created_at
-                                        ).getTime();
-
-                                    return (
-                                        Math.abs(
-                                            serverTime -
-                                            optimisticTime
-                                        ) <
-                                        30_000
-                                    );
-                                }
-                            );
-
-                        return !exists;
-                    }
+                    (optimistic) =>
+                        !isConfirmedByServer(
+                            optimistic,
+                            comments,
+                            currentUserId
+                        )
                 )
         );
     }, [
@@ -311,7 +279,7 @@ export function CommentSection({
                     comments
                 }
                 optimisticComments={
-                    optimisticComments
+                    pendingComments
                 }
                 currentUserId={
                     currentUserId
@@ -356,5 +324,26 @@ export function CommentSection({
                 }
             />
         </>
+    );
+}
+
+/** 임시 댓글과 같은 댓글(내 것, 같은 내용·답글 대상, 30초 이내)이 서버 목록에 있는지 */
+function isConfirmedByServer(
+    optimistic: OptimisticComment,
+    comments: Comment[],
+    currentUserId: string
+): boolean {
+    const optimisticTime =
+        new Date(optimistic.created_at).getTime();
+
+    return comments.some(
+        (comment) =>
+            comment.user_id === currentUserId &&
+            comment.content === optimistic.content &&
+            comment.parent_id === optimistic.parent_id &&
+            Math.abs(
+                new Date(comment.created_at).getTime() -
+                optimisticTime
+            ) < 30_000
     );
 }

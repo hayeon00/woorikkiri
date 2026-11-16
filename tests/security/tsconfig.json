@@ -35,6 +35,7 @@
     "../../lib/friendly-error.ts",
     "../../lib/realtime-refresh.ts",
     "../../lib/stable-signed-url.ts",
-    "../../lib/signed-url-batch.ts"
+    "../../lib/signed-url-batch.ts",
+    "../../lib/comment-visibility.ts"
   ]
 }
