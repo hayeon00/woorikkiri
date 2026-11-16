@@ -76,7 +76,7 @@ export function CommentDeleteButton({
                 onClick={() =>
                     setIsConfirming(true)
                 }
-                className="mt-1 text-[11px] font-medium text-gray-300 transition hover:text-red-400"
+                className="-mx-1.5 -my-1.5 px-1.5 py-1.5 text-[11px] font-medium text-gray-500 transition hover:text-red-500"
             >
                 삭제
             </button>
@@ -84,7 +84,7 @@ export function CommentDeleteButton({
     }
 
     return (
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="flex w-full flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[11px] font-medium text-gray-400">
                 이 댓글을 삭제할까요?
             </span>

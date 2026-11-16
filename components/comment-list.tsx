@@ -545,7 +545,11 @@ function CommentItem({
                         </span>
                     </div>
 
-                    <div className="mt-0.5 flex items-center gap-2.5">
+                    {/* D2: 시간 · 답글 · 삭제를 한 줄에 둔다.
+                        버튼은 보이는 크기는 그대로, 누르는 영역만 넓힌다
+                        (px/py로 넓히고 같은 만큼 -m으로 배치를 되돌림, 약 30×29px).
+                        gap-x-3이라 이웃 버튼의 누르는 영역과 겹치지 않는다. */}
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                         <time
                             className="text-[11px] font-medium text-gray-400"
                             dateTime={
@@ -565,24 +569,24 @@ function CommentItem({
                                         comment
                                     )
                                 }
-                                className="text-[11px] font-bold text-gray-400 transition hover:text-gray-700"
+                                className="-mx-1.5 -my-1.5 px-1.5 py-1.5 text-[11px] font-bold text-gray-500 transition hover:text-gray-800"
                             >
                                 답글
                             </button>
                         )}
-                    </div>
 
-                    {comment.user_id ===
-                        currentUserId && (
-                            <CommentDeleteButton
-                                commentId={
-                                    comment.id
-                                }
-                                deleteAction={
-                                    deleteAction
-                                }
-                            />
-                        )}
+                        {comment.user_id ===
+                            currentUserId && (
+                                <CommentDeleteButton
+                                    commentId={
+                                        comment.id
+                                    }
+                                    deleteAction={
+                                        deleteAction
+                                    }
+                                />
+                            )}
+                    </div>
                 </div>
             </div>
         </div>
