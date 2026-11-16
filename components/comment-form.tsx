@@ -89,6 +89,9 @@ export function CommentForm({
         setIsSubmitting,
     ] = useState(false);
 
+    const submittingRef =
+        useRef(false);
+
     const [
         mentionQuery,
         setMentionQuery,
@@ -346,7 +349,9 @@ export function CommentForm({
     async function handleSubmit(
         formData: FormData
     ) {
-        if (isSubmitting) {
+        // 화면이 다시 그려지기 전에 연달아 눌려도 한 번만 보낸다.
+        // 처리 중에 누른 Enter는 무시하고, 쓰던 글은 그대로 둔다.
+        if (submittingRef.current) {
             return;
         }
 
@@ -410,6 +415,8 @@ export function CommentForm({
                 ),
         });
 
+        submittingRef.current = true;
+
         setIsSubmitting(
             true
         );
@@ -437,12 +444,37 @@ export function CommentForm({
                 error
             );
 
-            toast.error(
+            const reason =
                 friendlyErrorMessage(
                     error,
                     "댓글을 등록하지 못했어요. 잠시 후 다시 시도해주세요."
-                )
-            );
+                );
+
+            // 보내는 동안 입력창은 열려 있으므로(A4), 그사이 새 글을 쓰기
+            // 시작했으면(답글·멘션 선택 포함) 그 글을 덮어쓰지 않는다.
+            // 실패한 글은 앞부분을 토스트로 알려준다.
+            const isWritingNext =
+                (inputRef.current?.value.trim() ?? "") !== "";
+
+            if (isWritingNext) {
+                const preview =
+                    content.length > 20
+                        ? `${content.slice(0, 20)}…`
+                        : content;
+
+                toast.error(
+                    `${reason} (보내지 못한 댓글: "${preview}")`
+                );
+
+                onSubmitFailed?.(
+                    tempId,
+                    null
+                );
+
+                return;
+            }
+
+            toast.error(reason);
 
             // 답글 대상을 되돌릴 때 입력창이 "@닉네임 "으로 덮이지 않게
             if (submittedReplyTarget) {
@@ -469,7 +501,7 @@ export function CommentForm({
                     content;
             }
 
-            // 입력창 잠금이 풀린 뒤에 포커스를 돌려준다
+            // 복구한 글 끝으로 커서를 옮긴다
             requestAnimationFrame(() => {
                 const restoredInput =
                     inputRef.current;
@@ -489,6 +521,8 @@ export function CommentForm({
                 );
             });
         } finally {
+            submittingRef.current = false;
+
             setIsSubmitting(
                 false
             );
@@ -665,27 +699,29 @@ export function CommentForm({
                             300
                         }
                         required
-                        disabled={
-                            isSubmitting
-                        }
+                        // A4: 보내는 동안에도 입력창은 잠그지 않는다.
+                        // 잠그면 포커스를 잃어 휴대폰 키보드가 내려간다.
+                        // 중복 전송은 아래 전송 버튼 잠금과 submittingRef로 막는다.
                         onChange={
                             handleInputChange
                         }
                         placeholder={
-                            isSubmitting
-                                ? "등록 중..."
-                                : replyTarget
-                                    ? `${replyTarget.nickname}님에게 답글...`
-                                    : "댓글 남기기..."
+                            replyTarget
+                                ? `${replyTarget.nickname}님에게 답글...`
+                                : "댓글 남기기..."
                         }
                         autoComplete="off"
-                        className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[16px] outline-none placeholder:text-gray-400 disabled:opacity-60 sm:text-[13px]"
+                        className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-[16px] outline-none placeholder:text-gray-400 sm:text-[13px]"
                     />
 
                     <button
                         type="submit"
                         disabled={
                             isSubmitting
+                        }
+                        // 버튼을 눌러도 입력창 포커스(키보드)를 빼앗지 않는다
+                        onMouseDown={(event) =>
+                            event.preventDefault()
                         }
                         aria-label={
                             isSubmitting
