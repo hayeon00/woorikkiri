@@ -5,12 +5,17 @@ import Link from "next/link";
 import {
     ReactNode,
     useEffect,
+    useRef,
     useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { CommentDeleteButton } from "@/components/comment-delete-button";
 import { ProfileImageViewer } from "@/components/profile-image-viewer";
+import {
+    hiddenRootCount,
+    shouldExpandForTarget,
+} from "@/lib/comment-visibility";
 
 type LinkedUser = {
     userId: string;
@@ -78,8 +83,6 @@ type CommentListProps = {
     ) => void;
 };
 
-const INITIAL_THREAD_COUNT =
-    3;
 
 export function CommentList({
                                 comments,
@@ -103,6 +106,23 @@ export function CommentList({
         setIsExpanded,
     ] =
         useState(false);
+
+    // 알림 딥링크로 이미 펼친 대상 댓글 id
+    const expandedForTargetRef =
+        useRef<number | null>(null);
+
+    // 화면을 처음 그릴 때 접은 개수. 이후 새 댓글은 아래에 더해지기만 한다.
+    const [baselineHidden] =
+        useState(() =>
+            hiddenRootCount(
+                comments.filter(
+                    (comment) =>
+                        comment.parent_id ===
+                        null
+                ).length,
+                false
+            )
+        );
 
     const sortedComments = [
         ...comments,
@@ -144,6 +164,15 @@ export function CommentList({
             return;
         }
 
+        // 같은 대상은 한 번만 펼친다. (예전에는 매 렌더마다 다시 펼쳐서
+        // 딥링크로 들어온 동안 "접기"를 눌러도 접히지 않았다.)
+        if (
+            expandedForTargetRef.current ===
+            targetCommentId
+        ) {
+            return;
+        }
+
         const targetComment =
             sortedComments.find(
                 (comment) =>
@@ -166,9 +195,18 @@ export function CommentList({
                     targetRootId
             );
 
+        expandedForTargetRef.current =
+            targetCommentId;
+
         if (
-            targetRootIndex >=
-            INITIAL_THREAD_COUNT
+            shouldExpandForTarget(
+                targetRootIndex,
+                hiddenRootCount(
+                    rootComments.length,
+                    false,
+                    baselineHidden
+                )
+            )
         ) {
             setIsExpanded(
                 true
@@ -178,21 +216,23 @@ export function CommentList({
         targetCommentId,
         sortedComments,
         rootComments,
+        baselineHidden,
     ]);
 
-    const visibleRoots =
-        isExpanded
-            ? rootComments
-            : rootComments.slice(
-                0,
-                INITIAL_THREAD_COUNT
-            );
+    // 가장 최근 댓글 3개를 보여주고 오래된 댓글을 접는다.
+    // 새 댓글(내 것·친구 것)이 항상 보이는 자리에 남는다.
+    const collapsedHiddenCount =
+        hiddenRootCount(
+            rootComments.length,
+            false,
+            baselineHidden
+        );
 
-    const hiddenCount =
-        Math.max(
-            rootComments.length -
-            INITIAL_THREAD_COUNT,
-            0
+    const visibleRoots =
+        rootComments.slice(
+            isExpanded
+                ? 0
+                : collapsedHiddenCount
         );
 
     if (
@@ -206,6 +246,27 @@ export function CommentList({
 
     return (
         <div className="mt-4 border-t border-gray-100 pt-4">
+            {/* 오래된 댓글 펼치기 (최근 댓글 위에 둔다) */}
+            {collapsedHiddenCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() =>
+                        setIsExpanded(
+                            (
+                                value
+                            ) =>
+                                !value
+                        )
+                    }
+                    aria-expanded={isExpanded}
+                    className="mb-4 text-[11px] font-bold text-gray-400 transition hover:text-gray-700"
+                >
+                    {isExpanded
+                        ? "이전 댓글 접기"
+                        : `이전 댓글 ${collapsedHiddenCount}개 보기`}
+                </button>
+            )}
+
             <div className="space-y-4">
                 {visibleRoots.map(
                     (comment) => {
@@ -313,26 +374,6 @@ export function CommentList({
                     )
                 )}
             </div>
-
-            {rootComments.length >
-                INITIAL_THREAD_COUNT && (
-                    <button
-                        type="button"
-                        onClick={() =>
-                            setIsExpanded(
-                                (
-                                    value
-                                ) =>
-                                    !value
-                            )
-                        }
-                        className="mt-4 text-[11px] font-bold text-gray-400 transition hover:text-gray-700"
-                    >
-                        {isExpanded
-                            ? "댓글 접기"
-                            : `댓글 ${hiddenCount}개 더 보기`}
-                    </button>
-                )}
         </div>
     );
 }
