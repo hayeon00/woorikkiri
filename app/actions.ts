@@ -371,43 +371,20 @@ export async function setLike(
     // ========================================
 
     if (!liked) {
+        // 좋아요 알림은 DB 트리거(likes_delete_notification)가 함께 지운다.
+        // 알림 삭제 권한은 받는 사람에게만 있어 여기서는 지울 수 없다.
         const {
-            data: deletedLikes,
             error: deleteLikeError,
         } = await supabase
             .from("likes")
             .delete()
             .eq("post_id", postId)
-            .eq("user_id", user.id)
-            .select("post_id");
+            .eq("user_id", user.id);
 
         if (deleteLikeError) {
             throw new Error(
                 deleteLikeError.message
             );
-        }
-
-        // 실제로 지운 경우에만 앱 내부 알림도 제거 (Push는 보내지 않는다)
-        if (
-            notifyOwner &&
-            (deletedLikes?.length ?? 0) > 0
-        ) {
-            const {
-                error: notificationError,
-            } = await supabase
-                .from("notifications")
-                .delete()
-                .eq("user_id", post.user_id)
-                .eq("actor_id", user.id)
-                .eq("post_id", postId)
-                .eq("type", "like");
-
-            if (notificationError) {
-                console.error(
-                    "좋아요 알림 삭제 실패:",
-                    notificationError
-                );
-            }
         }
     }
 
@@ -453,6 +430,14 @@ export async function setLike(
                     type: "like",
                     post_id: postId,
                 });
+
+            // 같은 좋아요 알림이 이미 있으면(유일 인덱스 notifications_like_once_idx)
+            // 이미 알린 것이므로 푸시도 다시 보내지 않는다.
+            if (notificationError?.code === "23505") {
+                revalidatePath("/");
+                revalidatePath("/notifications");
+                return;
+            }
 
             if (notificationError) {
                 console.error(
